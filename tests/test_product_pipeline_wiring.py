@@ -42,6 +42,26 @@ async def test_container_shopping_uses_persistent_product_service_not_article_ga
         factory = SearchAgentFactory(settings, container.product_recommendation, container.bus,
                                      kb, CircuitBreakerRegistry(), GatewayThrottle(1, 0))
         assert {tool.name for tool in factory.build_tools()} == {"product_search_tool", "category_insight_tool"}
+        # Verify the production factories against the SDK permission engine;
+        # acceptance runners must not need an extra tool-consent patch.
+        from agentscope.permission import PermissionEngine, PermissionBehavior
+        from agentscope.tool import FunctionTool
+        from app.application.agents.permissions import allow_business_tools
+
+        async def unrelated_write():
+            """An unknown write still requires confirmation."""
+            return "unused"
+
+        main = await container.orchestrator._sessions.get_or_create("permission-wiring")
+        for agent in (main, factory.build()):
+            allow_business_tools(agent)  # Applying again after restoration is idempotent.
+            engine = PermissionEngine(agent.state.permission_context)
+            product_tool = next(t for t in factory.build_tools() if t.name == "product_search_tool")
+            decision = await engine.check_permission(product_tool, {"query": "露营灯"})
+            assert decision.behavior == PermissionBehavior.ALLOW
+            assert len(agent.state.permission_context.allow_rules["product_search_tool"]) == 1
+            decision = await engine.check_permission(FunctionTool(unrelated_write, is_read_only=False), {})
+            assert decision.behavior == PermissionBehavior.ASK
     finally:
         await container.shutdown()
 

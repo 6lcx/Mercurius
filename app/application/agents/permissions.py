@@ -15,6 +15,8 @@ from agentscope.permission import PermissionBehavior, PermissionRule
 
 # 对话层已有确认卡语义的业务写工具 + 内置计划工具 + 调度/记忆工具
 _AUTO_ALLOWED_TOOLS = (
+    # 检索会更新商品缓存，但不产生订单；用户发起购物查询已授权这一步。
+    "product_search_tool",
     "create_order_tool",
     "cancel_order_tool",
     "task_dispatch",

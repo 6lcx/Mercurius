@@ -291,12 +291,19 @@ def discovery_query(spec: ProductSearchSpec) -> str:
     if not family:
         return query + " buy product price"
     parts = ['"' + family + '"', *requested_models(query)]
+    # Preserve explicit Latin brand/model qualifiers in both English and mixed
+    # Chinese queries. Translating the family must not erase "Anker" or "Fenix".
+    noise = {'i', 'a', 'an', 'the', 'want', 'need', 'buy', 'please', 'for', 'with', 'and', 'or', 'price'}
+    for term in re.findall(r'[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*', query):
+        present = set(re.findall(r'[a-z0-9]+(?:-[a-z0-9]+)*', ' '.join(parts).lower()))
+        if term.lower() not in noise | present:
+            parts.append(term)
     for pattern, english in ((r"充电|rechargeable", "rechargeable"),
                              (r"USB.?C|Type.?C", "USB-C"),
                              (r"轻便|便携|portable", "portable")):
         if re.search(pattern, query, re.I):
             parts.append(english)
-    return " ".join(parts[:3]) + " buy online price"
+    return " ".join(dict.fromkeys(parts)) + " buy online price"
 
 
 class TavilyExternalProductDiscovery:
@@ -336,8 +343,9 @@ class TavilyExternalProductDiscovery:
                 break
             # One different query is permitted after an empty discovery, not
             # unlimited retries or a requirement that the buyer name a model.
-            domains = sorted({urlsplit(str(page.get("url", ""))).hostname for page in pages} - {None})
-            fallback = query + ' official store ' + " ".join("-site:" + host for host in domains)
+            # A category-page result does not mean the merchant has no product
+            # details. Keep the requested brand's sites eligible on fallback.
+            fallback = query + ' product details add to cart'
             pages = await self._source.search(fallback, max_results=5)
             self.last_pages.extend(pages)
         return list(products.values())

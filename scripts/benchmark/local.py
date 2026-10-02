@@ -8,6 +8,19 @@ from dataclasses import asdict
 from .common import ROOT, pairs, safe_error, write_json
 
 
+async def wait_monotonic(seconds):
+    """Wait on the circuit's clock, which can be coarse on Windows/Python 3.12.
+
+    asyncio's timer may wake while time.monotonic has not advanced yet.
+    A single 12ms sleep is therefore not proof that a 10ms cooldown elapsed.
+    """
+    started = time.monotonic()
+    deadline = started + seconds
+    while (remaining := deadline - time.monotonic()) > 0:
+        await asyncio.sleep(remaining)
+    return time.monotonic() - started
+
+
 async def retrieval(rec, repeats=3):
     from app.application.usecases.product_recommendation import ProductRecommendationService
     from app.domain.catalog.product_search_spec import ProductSearchSpec
@@ -156,6 +169,7 @@ async def faults(rec, repeats=10):
         context_token = ShoppingContext.set(ShoppingContextSnapshot('fault', 'synthetic', 'zh', 'CNY', f'{scenario}-{repeat}-{variant}'))
         started = time.perf_counter()
         error, chunks, calls, blocked, recovered, safe = None, [], 0, 0, None, True
+        cooldown_observed_s = None
         try:
             if scenario.startswith('tool_') or scenario == 'circuit_recovery':
                 registry = CircuitBreakerRegistry(failure_threshold=3, reset_seconds=.01)
@@ -172,7 +186,7 @@ async def faults(rec, repeats=10):
                     yield ToolChunk(content=[TextBlock(text='complete')], state=ToolResultState.SUCCESS)
                 for step in range(1 if scenario == 'tool_timeout' else 6):
                     if step == 5:
-                        await asyncio.sleep(.012)
+                        cooldown_observed_s = await wait_monotonic(.012)
                     previous = calls
                     try:
                         output = [c async for c in middleware.on_tool_call(tool, {}, upstream)] if enabled else [c async for c in upstream()]
@@ -213,6 +227,7 @@ async def faults(rec, repeats=10):
                        safe_failure=safe, upstream_calls=calls, blocked_calls=blocked, recovered=recovered,
                        error=error, chunks=chunks, events=events, mock=True,
                        mock_scope='Only external API boundary; planned fault classes, not natural traffic',
+                       cooldown_observed_s=cooldown_observed_s,
                        retry_base_s=.002, tool_timeout_s=.01, circuit_reset_s=.01)
         finally:
             ShoppingContext.reset(context_token)

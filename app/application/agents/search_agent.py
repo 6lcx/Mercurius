@@ -2,9 +2,9 @@
 """SearchAgent
 
 跨境商品检索专家。基于 AgentScope 2.0 Agent：
-    工具集：product_search_tool（embedding+rerank 二阶段召回）
+    工具集：product_search_tool（规则评分与向量相似度，候选不足时联网发现）
           category_insight_tool（品类洞察 RAG，选购常识）
-          web_search_tool（可选，跨境政策兜底）
+          web_search_tool（仅历史显式装配调用方可选；正式配置不注册）
 
 对外通过 task_dispatch 工具被 MainAgent 调度（SubAgent as Tool 模式）。
 每次调度新建独立实例：2.0 的对话上下文内建于 AgentState，独立实例天然上下文隔离。
@@ -17,11 +17,12 @@ from agentscope.rag import KnowledgeBase
 from agentscope.tool import FunctionTool, Toolkit
 
 from app.application.agents.context_policy import build_context_config
+from app.application.agents.permissions import allow_business_tools
 from app.application.prompts.loader import load_prompts
 from app.application.tools.category_insight_tool import build_category_insight_tool
 from app.application.tools.product_search_tool import build_product_search_tool
 from app.application.tools.web_search_tool import build_web_search_tool
-from app.application.usecases.catalog_search import CatalogSearchUseCase
+from app.application.usecases.product_recommendation import ProductRecommendationService
 from app.infrastructure.eventbus import TradeEventBus
 from app.infrastructure.llm import create_chat_model
 from app.infrastructure.throttle import GatewayThrottle
@@ -37,7 +38,7 @@ class SearchAgentFactory:
     def __init__(
         self,
         settings: Settings,
-        catalog_search: CatalogSearchUseCase,
+        catalog_search: ProductRecommendationService,
         bus: TradeEventBus,
         knowledge_base: KnowledgeBase,
         circuit_registry: CircuitBreakerRegistry,
@@ -86,7 +87,7 @@ class SearchAgentFactory:
 
     def build(self) -> Agent:
         prompts = load_prompts()["sub_agents"]["search"]
-        return Agent(
+        return allow_business_tools(Agent(
             name=prompts["name"],
             system_prompt=prompts["system_prompt"],
             model=create_chat_model(self._settings, throttle=self._throttle, bus=self._bus),
@@ -97,4 +98,4 @@ class SearchAgentFactory:
                 self._settings.tool_result_limit,
             ),
             react_config=ReActConfig(max_iters=6),
-        )
+        ))

@@ -1,0 +1,457 @@
+{
+  "scope": "Original 3-bullet resume plus every claim in the reference template; revised wording is the deliverable",
+  "claims": [
+    {
+      "original": "跨平台搜索、比价与筛选",
+      "resolution": "支持跨来源候选检索与价格比较",
+      "implementation": [
+        "app/infrastructure/catalog/external_discovery.py",
+        "app/application/usecases/product_recommendation.py"
+      ],
+      "verification": [
+        "web_before",
+        "web_after",
+        "tests/test_external_discovery.py"
+      ],
+      "scope_or_reason": "同型号灯曾取得两个商家报价；最新3类需求2类有候选，分类页不冒充商品；未知运税不补零。"
+    },
+    {
+      "original": "多轮理解偏好、输出推荐理由",
+      "resolution": "保留能力描述",
+      "implementation": [
+        "app/application/agents/orchestrator.py",
+        "app/application/prompts/globex.yml"
+      ],
+      "verification": [
+        "context"
+      ],
+      "scope_or_reason": "真实模型及业务状态验收；不是所有用户表达均保证正确。"
+    },
+    {
+      "original": "AgentScope ReAct，主Agent处理简单请求",
+      "resolution": "保留",
+      "implementation": [
+        "app/application/agents/main_agent.py"
+      ],
+      "verification": [
+        "context",
+        "tests/test_product_pipeline_wiring.py"
+      ],
+      "scope_or_reason": ""
+    },
+    {
+      "original": "Task工具管理复杂任务并派发专家",
+      "resolution": "保留",
+      "implementation": [
+        "app/application/agents/main_agent.py",
+        "app/application/tools/task_dispatch_tool.py"
+      ],
+      "verification": [
+        "parallel"
+      ],
+      "scope_or_reason": ""
+    },
+    {
+      "original": "独立子任务上下文，减少无关历史干扰",
+      "resolution": "改为独立对话上下文，不宣称准确率提升",
+      "implementation": [
+        "app/application/tools/task_dispatch_tool.py"
+      ],
+      "verification": [
+        "parallel",
+        "tests/test_subagent_preference_inject.py"
+      ],
+      "scope_or_reason": "每次build独立Agent，只传demands与服务端偏好；必要业务状态经ContextVar共享。"
+    },
+    {
+      "original": "支持并发执行",
+      "resolution": "保留并行能力，3类双专家任务验收",
+      "implementation": [
+        "app/application/agents/main_agent.py"
+      ],
+      "verification": [
+        "parallel"
+      ],
+      "scope_or_reason": "本次延迟测量与本地测试有短暂重叠，不写加速百分比。"
+    },
+    {
+      "original": "压缩历史、保留近期消息",
+      "resolution": "保留",
+      "implementation": [
+        "app/application/agents/context_policy.py"
+      ],
+      "verification": [
+        "context",
+        "tests/test_phase3.py"
+      ],
+      "scope_or_reason": "生产trigger_ratio=.75、reserve_ratio=.15；验收强制压缩，不代表自动触发率。"
+    },
+    {
+      "original": "摘要保留预算、商品标识、待确认动作",
+      "resolution": "改为摘要结合结构化状态保存",
+      "implementation": [
+        "app/application/agents/critical_facts.py",
+        "app/application/tools/shopping_context_tool.py"
+      ],
+      "verification": [
+        "context",
+        "tests/test_context_repair.py"
+      ],
+      "scope_or_reason": "不是仅靠摘要提示词逐字保留。"
+    },
+    {
+      "original": "独立注入长期偏好",
+      "resolution": "保留",
+      "implementation": [
+        "app/application/agents/orchestrator.py",
+        "app/application/tools/task_dispatch_tool.py"
+      ],
+      "verification": [
+        "context",
+        "tests/test_subagent_preference_inject.py"
+      ],
+      "scope_or_reason": ""
+    },
+    {
+      "original": "完整保留排除条件",
+      "resolution": "改为注入时完整保留已存负向偏好",
+      "implementation": [
+        "app/application/memory/preference_selector.py",
+        "app/application/usecases/product_recommendation.py"
+      ],
+      "verification": [
+        "context",
+        "tests/test_context_repair.py"
+      ],
+      "scope_or_reason": "任意自然语言排除不是全覆盖；无法解析时要求澄清。"
+    },
+    {
+      "original": "按需选取正向偏好",
+      "resolution": "保留相关性选择",
+      "implementation": [
+        "app/application/memory/preference_selector.py",
+        "app/infrastructure/settings.py"
+      ],
+      "verification": [
+        "output/context-repair-v1/production-permissions-v1/real-embedding-selection.json"
+      ],
+      "scope_or_reason": "真实BGE选择案例通过；不将单例说成用户偏好命中率72%。"
+    },
+    {
+      "original": "跨会话复用与删除",
+      "resolution": "保留，补充当轮例外",
+      "implementation": [
+        "app/application/tools/forget_preference_tool.py",
+        "app/application/tools/shopping_context_tool.py"
+      ],
+      "verification": [
+        "context",
+        "tests/test_memory_persistence.py",
+        "tests/test_context_repair.py"
+      ],
+      "scope_or_reason": ""
+    },
+    {
+      "original": "Prompt Cache稳定80%",
+      "resolution": "删除稳定80%，只保留稳定system前缀设计",
+      "implementation": [
+        "app/application/agents/critical_facts.py"
+      ],
+      "verification": [
+        "output/context-repair-v1/production-permissions-v1/summary.json"
+      ],
+      "scope_or_reason": "该6轮观测缓存输入Token占比约72.29%；缓存占比与请求命中率、费用和延迟不同。"
+    },
+    {
+      "original": "分级超时与熔断",
+      "resolution": "保留",
+      "implementation": [
+        "app/infrastructure/resilience.py"
+      ],
+      "verification": [
+        "faults",
+        "tests/test_phase3.py"
+      ],
+      "scope_or_reason": "冷却计时评测已修正，原边界失败记录保留。"
+    },
+    {
+      "original": "模型瞬时故障重试、备用模型回退",
+      "resolution": "保留，以3类故障注入恢复60/60对照0/60量化",
+      "implementation": [
+        "app/infrastructure/llm.py"
+      ],
+      "verification": [
+        "faults"
+      ],
+      "scope_or_reason": "人工注入限流、持续暂态失败、输出前断流；永久错误和输出后断流不强制重试。"
+    },
+    {
+      "original": "任务派发、偏好管理重复调用提醒",
+      "resolution": "保留提醒，不写保证自愈",
+      "implementation": [
+        "app/application/harness/loop_detector.py",
+        "app/infrastructure/harness_middleware.py"
+      ],
+      "verification": [
+        "tests/test_harness_guards.py",
+        "tests/test_harness_middleware.py"
+      ],
+      "scope_or_reason": ""
+    },
+    {
+      "original": "任务完成率71%到89%",
+      "resolution": "用明确的组件故障恢复指标替换",
+      "implementation": [],
+      "verification": [
+        "faults"
+      ],
+      "scope_or_reason": "不支持原端到端完成率；不把注入恢复率叫线上任务完成率。"
+    },
+    {
+      "original": "OpenTelemetry与业务事件追踪",
+      "resolution": "保留请求与工具事件关联",
+      "implementation": [
+        "app/infrastructure/tracing.py",
+        "app/infrastructure/eventbus.py"
+      ],
+      "verification": [
+        "tests/test_order_queue_regressions.py",
+        "output/benchmarks/live-consented-v3/aggregate.json"
+      ],
+      "scope_or_reason": "本地Span与业务事件关联已验证；不宣称已验证完整外部OTLP后端。"
+    },
+    {
+      "original": "问题定位30分钟到5分钟",
+      "resolution": "删除分钟收益",
+      "implementation": [],
+      "verification": [],
+      "scope_or_reason": "无真人盲测计时数据。"
+    },
+    {
+      "original": "参考模板：复杂任务RT降低65%",
+      "resolution": "不采用65%",
+      "implementation": [
+        "app/application/tools/task_dispatch_tool.py"
+      ],
+      "verification": [
+        "parallel"
+      ],
+      "scope_or_reason": "保留并行机制与完成证据。"
+    },
+    {
+      "original": "参考模板：10+轮Token降低30%",
+      "resolution": "不采用该数值，不把压缩直接当降本提速",
+      "implementation": [
+        "app/application/agents/context_policy.py"
+      ],
+      "verification": [
+        "context"
+      ],
+      "scope_or_reason": "旧合成历史实验有输入缩减，但成本和延迟未同步改善；未混作当前完整链路因果收益。"
+    },
+    {
+      "original": "参考模板：长期记忆命中72%、历史选择复用",
+      "resolution": "保留持久化能力，去掉未测命中率",
+      "implementation": [
+        "app/application/agents/critical_facts.py",
+        "app/application/memory/preference_selector.py"
+      ],
+      "verification": [
+        "context"
+      ],
+      "scope_or_reason": ""
+    },
+    {
+      "original": "参考模板：Embedding+BM25，Top100相关率+22%，跨语言+35%",
+      "resolution": "改为实际规则评分+BGE，67条开发集平均Recall@8相对提升28.9%",
+      "implementation": [
+        "app/application/usecases/product_recommendation.py"
+      ],
+      "verification": [
+        "retrieval"
+      ],
+      "scope_or_reason": "当前主流程无BM25与reranker；不将旧召回路径和当前服务混淆。跨语言35%未证实。"
+    },
+    {
+      "original": "参考模板：LangFuse全链路Trace",
+      "resolution": "使用当前OpenTelemetry名称",
+      "implementation": [
+        "app/infrastructure/tracing.py"
+      ],
+      "verification": [
+        "tests/test_order_queue_regressions.py"
+      ],
+      "scope_or_reason": ""
+    },
+    {
+      "original": "参考模板：6种事件+WebSocket，重复提交0%",
+      "resolution": "实际13种事件，保留会话路由能力，删除用户行为收益",
+      "implementation": [
+        "app/infrastructure/eventbus.py",
+        "app/presentation/server.py"
+      ],
+      "verification": [
+        "tests/test_order_queue_regressions.py"
+      ],
+      "scope_or_reason": "订单幂等测试不等于用户重复提交率；不把自定义事件说成已验证完整AG-UI标准兼容。"
+    },
+    {
+      "original": "参考模板：日均8万用户、超越闭源模型",
+      "resolution": "不采用",
+      "implementation": [],
+      "verification": [],
+      "scope_or_reason": "无生产流量或同口径模型对照证据。"
+    },
+    {
+      "original": "补充：品类RAG评测",
+      "resolution": "22条开发问题，Top3片段后文档Recall97.73%",
+      "implementation": [
+        "app/infrastructure/rag/category_knowledge.py",
+        "app/application/tools/category_insight_tool.py"
+      ],
+      "verification": [
+        "category"
+      ],
+      "scope_or_reason": "5篇静态文档；不是生成回答准确率或知识时效保证。"
+    }
+  ],
+  "measurements": {
+    "context": {
+      "independent_cases": 6,
+      "turns": 12,
+      "passed_turns": 12,
+      "passed_cases": 6,
+      "api_calls": 33,
+      "api_errors": 0,
+      "failed_checks": []
+    },
+    "recovery": {
+      "protection_off": {
+        "recovered": 0,
+        "trials": 60
+      },
+      "protection_on": {
+        "recovered": 60,
+        "trials": 60
+      }
+    },
+    "recall_at_8": {
+      "rules": 0.5895522388059702,
+      "rules_embedding": 0.7599502487562189
+    },
+    "relative_recall_improvement": 0.2890295358649788,
+    "category": {
+      "k": 3,
+      "count": 22,
+      "recall": 0.9773,
+      "mrr": 0.947,
+      "ndcg": 0.9496,
+      "filter_accuracy": null
+    },
+    "web": {
+      "cases": [
+        {
+          "case": "lantern",
+          "query": "Fenix CL26R Pro camping lantern",
+          "error": null,
+          "checks": {
+            "nonempty_candidates": true,
+            "priced_source_records": true,
+            "unknown_cost_not_verified": true
+          },
+          "domains": [
+            "www.fenixlighting.com"
+          ],
+          "admitted_products": 1,
+          "recommended": 1
+        },
+        {
+          "case": "powerbank",
+          "query": "Anker power bank",
+          "error": null,
+          "checks": {
+            "nonempty_candidates": true,
+            "priced_source_records": true,
+            "unknown_cost_not_verified": true
+          },
+          "domains": [
+            "www.anker.com"
+          ],
+          "admitted_products": 3,
+          "recommended": 3
+        },
+        {
+          "case": "suitcase",
+          "query": "Samsonite suitcase",
+          "error": null,
+          "checks": {
+            "nonempty_candidates": false,
+            "priced_source_records": false,
+            "unknown_cost_not_verified": true
+          },
+          "domains": [],
+          "admitted_products": 0,
+          "recommended": 0
+        }
+      ],
+      "search_calls": 5,
+      "search_errors": 0,
+      "domains": [
+        "www.anker.com",
+        "www.fenixlighting.com"
+      ],
+      "llm_calls": 0
+    },
+    "regression": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "4",
+      "tests": "473",
+      "time": "15.630",
+      "timestamp": "2026-10-02T18:52:44.707684+08:00",
+      "hostname": "dym"
+    }
+  },
+  "evidence": {
+    "context": {
+      "path": "output/resume-verification-v4/context/summary.json",
+      "sha256": "76b5073185c1f1484d274fb89fc344f25e2a52a6f40a59653a45abf029f3f8bb"
+    },
+    "context_protocol": {
+      "path": "output/resume-verification-v4/context/protocol.json",
+      "sha256": "da7edbed63c5f6310a9423264d51e5a0430042290fed9d3445b820cb22666fc5"
+    },
+    "parallel": {
+      "path": "output/resume-verification-v4/parallel/results.jsonl",
+      "sha256": "58a4c694a28fa129b24c81c82f7221cae6c800523ddd180fad20dd9510b136f5"
+    },
+    "faults": {
+      "path": "output/resume-verification-v3/faults/results.jsonl",
+      "sha256": "0722257a5c4c2bbb3ade88a3f7d45f3e6a369811f5161eb7b3c4627daedf445d"
+    },
+    "retrieval": {
+      "path": "output/resume-verification-v2/local/aggregate.json",
+      "sha256": "5c7cd681a9022fb018f344b3e0908105c62bd3c9cd99ff0cccd3f426dca34cef"
+    },
+    "category": {
+      "path": "output/resume-verification-v2/category/results.json",
+      "sha256": "081bb038603c9479a250a747a7a6d0dd6615521d7e37817c7caf709ffdbca9b2"
+    },
+    "web_before": {
+      "path": "output/resume-verification-v5/web-complete/summary.json",
+      "sha256": "34763003d44c9f19fa6515baf52d98f4f88d0a9360c2dc91e4a5c81fb51128dd"
+    },
+    "web_after": {
+      "path": "output/resume-verification-v6/web/summary.json",
+      "sha256": "85d8c4a8ddf8d981f3a08be7b87780c950552fca902ea7f49a309e3332839d7f"
+    },
+    "regression": {
+      "path": "output/resume-verification-v6/pytest.xml",
+      "sha256": "b58abfa65ff3972f86522e89829dc4bfe9ff86378b4278c9c75599740078dda0"
+    }
+  },
+  "excluded_claims_are_not_implemented": true,
+  "raw_evidence_is_local": true,
+  "raw_evidence_note": "Raw API/web responses remain local; public summaries do not include credentials or full merchant pages."
+}

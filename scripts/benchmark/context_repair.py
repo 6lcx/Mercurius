@@ -59,7 +59,7 @@ async def run(name):
     rows = []
     with ApiCapture(rec, 40) as capture, SpendingGuard(capture, rec, limit=1.0), patch(
             'app.composition.PersistentProductRepository', lambda data_dir: PersistentProductRepository(data_dir, products=products)):
-        async with container(rec, 'context-repair', consent=True, web=False) as c:
+        async with container(rec, 'context-repair', consent=False, web=False) as c:
             sid = buyer = 'context-repair'
             store = c.orchestrator._preference_store
             await store.append(BuyerPreference(buyer, 'dislike', '不喜欢红色商品'))

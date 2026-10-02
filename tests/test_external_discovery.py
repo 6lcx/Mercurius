@@ -79,6 +79,16 @@ def test_conversational_demand_becomes_product_keywords_without_invented_model()
     assert "我不知道" not in query and "Fenix" not in query
 
 
+def test_discovery_preserves_explicit_brand_and_model_qualifiers():
+    for demand, expected in (
+        ('Anker power bank', ['Anker', 'power bank']),
+        ('Samsonite suitcase', ['Samsonite', 'suitcase']),
+        ('想买Fenix CL26R Pro充电露营灯', ['Fenix', 'CL26R PRO', 'rechargeable']),
+    ):
+        query = discovery_query(ProductSearchSpec(demand))
+        assert all(word.casefold() in query.casefold() for word in expected), query
+
+
 def test_captured_unrelated_provider_products_do_not_pass_requested_kind():
     for url, title in (("https://pebblebee.com/products/card-5", "Card 5"),
                        ("https://www.ti.com/product-category/battery-management-ics/battery-fuel-gauges/overview.html", "Battery fuel gauges | TI.com")):
