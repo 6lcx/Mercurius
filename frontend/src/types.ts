@@ -8,6 +8,8 @@ export type TradeEventType =
   | "plan.update"
   | "context.compressed"
   | "model.fallback"
+  | "model.attempt_failed"
+  | "model.stream_failed"
   | "final.result"
   | "error";
 

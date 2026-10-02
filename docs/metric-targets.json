@@ -1,0 +1,88 @@
+{
+  "status": "active_engineering_targets_not_achieved_claims",
+  "user_correction": "通过工程优化满足指标；不得用删除指标代替达标工作。允许合理调整口径和提升比例。",
+  "primary_targets": [
+    {
+      "metric": "Prompt Cache",
+      "target": "输入Token缓存占比达到约80%，并验证多轮业务正确性",
+      "current_work": "无损去重重复事实，真实完整Agent调用AB/BA对照，包括摘要调用"
+    },
+    {
+      "metric": "任务完成率",
+      "target": "争取89%以上并验证相对未优化配置的收益；71%保留为原基线目标值而非已测事实",
+      "current_work": "固定业务需求与一致故障注入，测真实模型、工具及数据库结果"
+    },
+    {
+      "metric": "问题定位耗时",
+      "target": "争取5分钟内定位，保留30分钟基线目标",
+      "current_work": "建设可诊断错误样本和追踪定位工具，再进行有计时、有正确根因校验的对照；自动定位与人工定位分开"
+    }
+  ],
+  "reference_targets": {
+    "parallel_latency_reduction": 0.65,
+    "long_context_input_token_reduction": 0.3,
+    "preference_recall": 0.72,
+    "rag_relative_improvement": 0.22,
+    "cross_language_relative_improvement": 0.35
+  },
+  "rules": [
+    "先冻结需求、断言和测量口径，再跑对照",
+    "不能通过填充输入抬高缓存占比",
+    "不能丢失约束来缩短输入",
+    "失败与未达标实验保留",
+    "不为得到71%人为配比故障或挑选样本",
+    "每个目标分开跟踪，未完成不能整体结项"
+  ],
+  "verified_progress": {
+    "cache": {
+      "ratio": 0.81007197097369,
+      "scope": "ABBA fixed six-turn scenario with two compressions each run; two optimized repeats, not universal stability",
+      "evidence": "output/metric-targets/cache-projection-v1/summary.json"
+    },
+    "completion": {
+      "passed": 39,
+      "total": 39,
+      "scope": "13 business cases x normal/429/prestream controlled strata, not natural traffic",
+      "evidence": "output/metric-targets/task-resilience-v1/summary.json"
+    },
+    "preference": {
+      "recall_at_5": 1.0,
+      "baseline_recency": 0.20833333333333334,
+      "scope": "12 synthetic development queries, 24 labeled positives, age-balanced; all dislikes kept",
+      "evidence": "output/metric-targets/preference-recall-v1/summary.json"
+    },
+    "parallel": {
+      "four_workers_reduction": 0.6536073789721644,
+      "two_workers_reduction": 0.5022849992958296,
+      "scope": "Current structured-output workers; paired worker phase, 2 repeats; excludes planning/synthesis; threshold remains workload-dependent",
+      "evidence": "output/metric-targets/parallel-latency-v3/summary.json"
+    },
+    "diagnosis": {
+      "status": "automated_evidence_extraction_verified_human_MTTR_pending",
+      "changes": "Correlated model failure events survive successful retries; diagnostic CLI reports initial failure separately from consequences",
+      "automated_evidence_correct": 18,
+      "automated_evidence_total": 18,
+      "max_cli_seconds": 0.07802679995074868,
+      "evidence": "output/metric-targets/diagnosis-evidence-v1/summary.json"
+    },
+    "long_context": {
+      "input_token_reduction": 0.33433089317841247,
+      "baseline_input_tokens": 685339,
+      "compressed_input_tokens": 456209,
+      "passed_turns": 48,
+      "total_turns": 48,
+      "compressed_cache_ratio": 0.8046838181622896,
+      "scope": "12 real shopping turns per run, ABBA, forced compression boundaries; includes summary calls; no cost or latency improvement claimed",
+      "evidence": "output/metric-targets/context-long-v3/summary.json"
+    },
+    "cross_language": {
+      "baseline_agent_recall_at_8": 0.5,
+      "current_agent_recall_at_8": 0.8333333333333334,
+      "relative_gain": 0.6666666666666666,
+      "format_failures_before": 5,
+      "format_failures_after": 0,
+      "scope": "Same 12 synthetic English development queries; query rewriting plus structured worker output, not embedding-only or BM25",
+      "evidence": "output/metric-targets/cross-language-agent-v2/summary.json"
+    }
+  }
+}

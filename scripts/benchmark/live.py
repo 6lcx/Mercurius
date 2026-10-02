@@ -198,8 +198,9 @@ async def parallel_suite(rec, capture, args):
     from app.application.tools.task_dispatch_tool import build_task_dispatch_tool
     from app.infrastructure.context import ShoppingContext, ShoppingContextSnapshot
     cases = [dict(id='camp-travel', tasks=['检索露营灯，返回真实工具结果。', '检索旅行三件套，返回真实工具结果。']),
-             dict(id='audio-power', tasks=['检索降噪耳机，返回真实工具结果。', '检索充电器，返回真实工具结果。']),
-             dict(id='hiking-towel', tasks=['检索登山杖，返回真实工具结果。', '检索速干毛巾，返回真实工具结果。'])]
+               dict(id='audio-power', tasks=['检索降噪耳机，返回真实工具结果。', '检索充电器，返回真实工具结果。']),
+               dict(id='hiking-towel', tasks=['检索登山杖，返回真实工具结果。', '检索速干毛巾，返回真实工具结果。'])]
+    cases = getattr(args, 'parallel_cases', None) or cases
     if args.limit_cases:
         cases = cases[:args.limit_cases]
     write_json(rec.output / 'parallel-cases.json', cases)
@@ -213,13 +214,20 @@ async def parallel_suite(rec, capture, args):
             ctx = ShoppingContext.set(ShoppingContextSnapshot(key, key, 'zh-CN', 'CNY', key))
             q = c.bus.subscribe(key)
             started, error, outputs, censored = time.perf_counter(), None, [], False
+            async def dispatch_worker(index, task):
+                worker_ctx = ShoppingContext.set(ShoppingContextSnapshot(key, key, 'zh-CN', 'CNY',
+                    request_id=f'{key}-worker-{index}', raw_query=task))
+                try:
+                    return await dispatch('search_agent', task)
+                finally:
+                    ShoppingContext.reset(worker_ctx)
             try:
                 async with asyncio.timeout(args.task_timeout):
                     if variant == 'parallel':
-                        outputs = await asyncio.gather(*(dispatch('search_agent', task) for task in case['tasks']))
+                        outputs = await asyncio.gather(*(dispatch_worker(i, task) for i, task in enumerate(case['tasks'])))
                     else:
-                        for task in case['tasks']:
-                            outputs.append(await dispatch('search_agent', task))
+                        for i, task in enumerate(case['tasks']):
+                            outputs.append(await dispatch_worker(i, task))
             except Exception as exc:
                 error = safe_error(exc)
                 censored = isinstance(exc, TimeoutError)
@@ -229,24 +237,16 @@ async def parallel_suite(rec, capture, args):
             events = drain(q)
             c.bus.unsubscribe(key, q)
             completions = [e for e in events if e['type'] == 'tool.result' and e['payload'].get('tool') == 'task_dispatch']
-            searches = [e for e in events if e['type'] == 'tool.result' and e['payload'].get('tool') == 'product_search_tool' and e['payload'].get('hits')]
+            searches = [e for e in events if e['type'] == 'tool.result' and e['payload'].get('tool') == 'product_search_tool' and isinstance(e['payload'].get('hits'), list) and not e['payload'].get('error')]
             texts = ['\n'.join(b.text for b in result.content if hasattr(b, 'text')) for result in outputs]
-            # Validate EACH worker, not merely two searches anywhere in the group.
-            evidence_ids = {h['product_id'] for e in searches for h in e['payload']['hits']}
-            output_checks = []
-            for text in texts:
-                import re
-                candidate = re.sub(r'^```(?:json)?\s*|\s*```$', '', text.strip())
-                try:
-                    payload = json.loads(candidate)
-                    items = payload.get('hits', []) if isinstance(payload, dict) else []
-                    output_checks.append(bool(items) and all(isinstance(h, dict) and h.get('product_id') in evidence_ids for h in items))
-                except (ValueError, TypeError):
-                    output_checks.append(False)
-            success = error is None and len(searches) >= 2 and len(output_checks) == 2 and all(output_checks)
+            from .worker_contract import search_contract
+            output_checks = [search_contract(text, [e for e in events if e.get('request_id') == f'{key}-worker-{i}'])
+                             for i, text in enumerate(texts)]
+            expected_count = len(case['tasks'])
+            success = error is None and len(completions) == expected_count and len(searches) >= expected_count and len(output_checks) == expected_count and all(output_checks)
             artifact = rec.artifact(key+'.json', dict(outputs=texts, events=events, per_worker_evidence_checks=output_checks))
             overlap = None
-            if len(completions) == 2:
+            if len(completions) == expected_count:
                 from datetime import datetime
                 spans = [(datetime.fromisoformat(e['payload']['started_at']).timestamp(), datetime.fromisoformat(e['payload']['finished_at']).timestamp()) for e in completions]
                 overlap = max(0, min(s[1] for s in spans)-max(s[0] for s in spans))

@@ -453,5 +453,11 @@
   },
   "excluded_claims_are_not_implemented": true,
   "raw_evidence_is_local": true,
-  "raw_evidence_note": "Raw API/web responses remain local; public summaries do not include credentials or full merchant pages."
+  "raw_evidence_note": "Raw API/web responses remain local; public summaries do not include credentials or full merchant pages.",
+  "status": "Historical verification before user requested further metric-target engineering; not current closure criteria",
+  "superseded_by": [
+    "docs/metric-targets.json",
+    "docs/metric-target-progress.txt",
+    "docs/metric-evidence.json"
+  ]
 }

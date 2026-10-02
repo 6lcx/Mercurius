@@ -32,7 +32,7 @@ from app.infrastructure.context import ShoppingContext
 from app.infrastructure.eventbus import TradeEventBus
 from app.infrastructure.settings import Settings
 from app.infrastructure.throttle import GatewayThrottle
-from app.infrastructure.transient import is_transient_error, PartialStreamError
+from app.infrastructure.transient import is_transient_error, PartialStreamError, upstream_error_code
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class ThrottledChatModel(OpenAIChatModel):
             if self._bus is not None:
                 self._bus.publish(ShoppingContext.current_session_id(), "model.stream_failed",
                                   {"partial_output": True, "retryable": False,
-                                   "code": "partial_model_stream"})
+                                   "code": "partial_model_stream", "cause_code": upstream_error_code(err)})
             raise PartialStreamError("Model stream interrupted after output; automatic replay disabled") from err
         finally:
             try:
@@ -153,6 +153,14 @@ class ThrottledChatModel(OpenAIChatModel):
                 result = await self._invoke_upstream(messages, tools, tool_choice, **kwargs)
                 return await self._complete_attempt(result)
             except BaseException as err:
+                if isinstance(err, Exception) and self._bus is not None:
+                    will_retry = is_transient_error(err) and attempt < self._max_transient_retries
+                    self._bus.publish(ShoppingContext.current_session_id(), "model.attempt_failed", {
+                        "model": self.model, "code": upstream_error_code(err),
+                        "attempt": attempt + 1, "retryable": is_transient_error(err),
+                        "will_retry": will_retry,
+                        "retry_delay_s": self._retry_base_seconds * (3**attempt) if will_retry else 0,
+                    })
                 if not is_transient_error(err):
                     raise
                 last_error = err

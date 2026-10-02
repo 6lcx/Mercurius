@@ -35,6 +35,7 @@ EVENT_TYPES = (
     "plan.update",
     "context.compressed",
     "model.fallback",
+    "model.attempt_failed",
     "model.stream_failed",
     "cache.hit",
     "task.queued",

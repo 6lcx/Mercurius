@@ -154,11 +154,33 @@ class TestRetryAndFallback:
         assert model.upstream_calls == 3, "主模型应先把重试次数用尽"
         assert fallback.calls == 1
 
+        attempts = [queue.get_nowait() for _ in range(3)]
+        assert all(e.type == 'model.attempt_failed' for e in attempts)
+        assert [e.payload['will_retry'] for e in attempts] == [True, True, False]
         event = queue.get_nowait()
         assert event.type == "model.fallback"
         assert event.payload["from"] == "primary-model"
         assert event.payload["to"] == "fallback-model"
         assert "Throttling" in event.payload["reason"]
+
+    async def test_recovered_failure_keeps_correlated_diagnostic_evidence_without_raw_error(self):
+        from app.application.diagnostics import diagnose_request
+        bus = TradeEventBus()
+        queue = bus.subscribe('recovered')
+        model = _build([RuntimeError('429 rate limit secret-body'), 'ok'], retries=1, bus=bus)
+        token = ShoppingContext.set(ShoppingContextSnapshot('recovered', 'buyer', 'zh-CN', 'CNY',
+            request_id='request-recovered', traceparent='00-'+'1'*32+'-'+'2'*16+'-01'))
+        try:
+            assert await model([]) == 'ok'
+        finally:
+            ShoppingContext.reset(token)
+        rows = [queue.get_nowait().to_dict()]
+        assert queue.empty()
+        assert 'secret-body' not in str(rows)
+        diagnosis = diagnose_request(rows, 'request-recovered')
+        assert diagnosis['first_failure']['classification'] == 'rate_limit'
+        assert diagnosis['first_failure']['attempt'] == 1
+        assert diagnosis['trace_ids'] == ['1'*32]
 
     async def test_raises_when_no_fallback_configured(self):
         model = _build([RuntimeError("429 rate limit")] * 2, retries=1)

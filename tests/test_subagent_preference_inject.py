@@ -31,10 +31,10 @@ class RecordingWorker:
     def __init__(self, seen: list) -> None:
         self._seen = seen
 
-    async def reply(self, inputs):
+    async def reply(self, inputs, structured_schema=None):
         messages = inputs if isinstance(inputs, list) else [inputs]
         self._seen.extend(messages)
-        return AssistantMsg("worker", '{"hits": []}')
+        return AssistantMsg("worker", '{"hits": []}', structured_output={'hits':[], 'notes':'无匹配'} if structured_schema else None)
 
 
 class RecordingFactory:

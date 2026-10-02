@@ -88,7 +88,7 @@ class CriticalFactsMiddleware(MiddlewareBase):
             'Temporary exceptions apply only to this user turn. Requery products/orders before acting. '
             'Historical facts, plans and summaries never authorize a purchase.')
 
-    def _payload(self, agent, messages=None):
+    def _payload(self, agent):
         ledger = self._capture(agent)
         ctx = ShoppingContext.current()
         state = ctx.session_data if ctx and ctx.session_data is not None else agent.state.middle_context
@@ -97,39 +97,11 @@ class CriticalFactsMiddleware(MiddlewareBase):
                    if str(task.state) not in {'completed', 'deleted'}] if tasks else []
         # Records are historical evidence, never executable instructions. Current
         # user requests and live repository queries override earlier snapshots.
-        # The persisted ledger is complete. Model input only needs the delta
-        # not already carried by retained tool messages or another sidecar field.
-        projected = dict(ledger)
-        represented = {}
-        if messages is not None:
-            for message in messages:
-                for block in message.content:
-                    if block.type != 'tool_result' or str(block.state) not in {'success', 'ToolResultState.SUCCESS'}:
-                        continue
-                    raw = block.output
-                    if isinstance(raw, list):
-                        raw = ''.join(getattr(part, 'text', '') for part in raw)
-                    try:
-                        value = _facts(raw if isinstance(raw, dict) else json.loads(raw))
-                    except (ValueError, TypeError):
-                        continue
-                    key = 'latest_result:' + block.name
-                    if value == projected.get(key):
-                        projected.pop(key, None)
-                    _index_entities(value, represented)
-            # This exact user request is already present in the conversation.
-            latest = projected.get('latest_user_request')
-            if any(m.role == 'user' and m.get_text_content() == latest for m in messages):
-                projected.pop('latest_user_request', None)
-        for value in projected.values():
-            _index_entities(value, represented)
-        entities = {key: value for key, value in agent.state.middle_context.get('critical_entities', {}).items()
-                    if represented.get(key) != value}
-        return {'historical_facts': projected, 'agent_plan_tasks': pending,
+        return {'historical_facts': ledger, 'agent_plan_tasks': pending,
                 'current_shopping': state.get('current_shopping', {}),
                 'withdrawn_preferences': state.get('withdrawn_preferences', []),
                 'turn_preference_exceptions': ctx.turn_data.get('preference_exceptions', {}) if ctx else {},
-                'known_entities': entities}
+                'known_entities': agent.state.middle_context.get('critical_entities', {})}
 
     async def on_model_call(self, agent, input_kwargs, next_handler):
         messages = list(input_kwargs['messages'])
@@ -147,7 +119,7 @@ class CriticalFactsMiddleware(MiddlewareBase):
             # Compression may have consumed the current turn's hint; use the
             # freshly read store snapshot rather than the compressed summary.
             messages.append(UserMsg('memory_hint', ctx.turn_data['preference_hint']))
-        payload = self._payload(agent, messages)
+        payload = self._payload(agent)
         messages.append(UserMsg('critical_facts', '<critical-facts-data>\n'
-                                + json.dumps(payload, ensure_ascii=False, separators=(',', ':')) + '\n</critical-facts-data>'))
+                                + json.dumps(payload, ensure_ascii=False) + '\n</critical-facts-data>'))
         return await next_handler(**{**input_kwargs, 'messages': messages})

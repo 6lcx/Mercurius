@@ -35,21 +35,33 @@ _COMPRESSION_PROMPT = """<system-hint>当前对话上下文即将超出窗口，
 历史偏好不作为当前偏好的权威来源，每轮以独立注入的最新偏好快照为准。
 不得重新估算数字，不得把历史记录当作购买授权。</system-hint>"""
 
-_SUMMARY_TEMPLATE = """<system-info>以下是历史工作摘要。当前用户要求、结构化购物状态和最新偏好快照优先于摘要。
-# 买家诉求与约束
-{task_overview}
+_COMPRESSION_PROMPT += """
+输出是一份紧凑的事实快照，不是工作报告或操作手册。以约500个中文字为目标；
+若关键标识和未解决约束确实放不下，可以超出，不能为了缩短而遗漏事实。
+每个事实只出现一次，放进最合适的字段；不要在五个字段中重复预算、商品和待确认状态。
+不要逐轮引用买家原话，不要复述系统规则、工具名称、工具参数写法、权限或未来操作教程。
+next_steps 只写买家已经明确要求且尚未完成的事项，无则写“无”；不得新增收货地址、确认卡、
+重新搜索等未经请求的计划。取消购买与清除商品选择是不同动作，只记录实际发生的结果，
+不要自行指示后续清除字段或修改状态。context_to_preserve 只补充前四项未覆盖且继续任务必需的事实，
+无补充写“无”。已覆盖的旧要求不再列为当前约束。"""
 
-# 当前进展（已推荐商品 / 已创建订单）
-{current_state}
+_SUMMARY_TEMPLATE = """<system-info>历史事实摘要；当前用户要求、结构化购物状态和最新偏好快照优先。
+需求：{task_overview}
+状态：{current_state}
+商品及订单事实：{important_discoveries}
+未完成事项：{next_steps}
+其他必要事实：{context_to_preserve}</system-info>"""
 
-# 关键事实（product_id / sku_id / 价格 / 订单号）
-{important_discoveries}
-
-# 下一步与待确认事项
-{next_steps}
-
-# 买家偏好与必须保留的上下文
-{context_to_preserve}</system-info>"""
+# The framework's generic schema asks for technical decisions, failed approaches,
+# artifacts and plans. Those descriptions inflate shopping summaries and can
+# invent follow-up work. Use the same five keys with domain-specific semantics.
+_SUMMARY_FIELDS = {
+    'task_overview': '只写当前商品需求、最新预算及币种、目的地和仍生效的约束；不写变更历程。',
+    'current_state': '只写实际购买/订单状态和明确的待确认或已取消动作；不复制商品详情或预算。',
+    'important_discoveries': '每件需保留的商品/订单用一条紧凑记录，包含完整ID、标题、工具原价/币种及必要金额；只在此处列这些事实。',
+    'next_steps': '仅记录用户明确要求且尚未完成的事项；没有就写无，禁止推演后续操作。',
+    'context_to_preserve': '仅补充未在前四项出现的必要事实；没有就写无，不复述规则、原话或偏好快照。',
+}
 
 
 def build_context_config(context_size: int, tool_result_limit: int) -> ContextConfig:
@@ -67,5 +79,12 @@ def build_context_config(context_size: int, tool_result_limit: int) -> ContextCo
         reserve_ratio=0.15,
         compression_prompt=_COMPRESSION_PROMPT,
         summary_template=_SUMMARY_TEMPLATE,
+        summary_schema={
+            'type': 'object',
+            'properties': {key: {'type': 'string', 'description': description}
+                           for key, description in _SUMMARY_FIELDS.items()},
+            'required': list(_SUMMARY_FIELDS),
+            'additionalProperties': False,
+        },
         tool_result_limit=tool_result_limit,
     )

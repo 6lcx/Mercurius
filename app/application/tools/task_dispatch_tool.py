@@ -21,7 +21,8 @@ SubAgent as Tool 的调度工具——MainAgent 调它意味着"派一个专家�
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
+from pydantic import BaseModel, Field, ValidationError
 
 from agentscope.message import TextBlock, ToolResultState, UserMsg
 from agentscope.tool import ToolChunk
@@ -37,6 +38,11 @@ from app.infrastructure.context import ShoppingContext
 from app.infrastructure.eventbus import TradeEventBus
 
 logger = logging.getLogger(__name__)
+
+
+class SearchWorkerResult(BaseModel):
+    hits: list[dict[str, Any]] = Field(description='只包含商品工具实际返回的商品卡；ID、价格等字段原样保留。无结果或需澄清时为空数组。')
+    notes: str = Field(description='推荐理由、筛选结果或需向买家澄清的问题。')
 
 
 def build_task_dispatch_tool(
@@ -111,8 +117,18 @@ def build_task_dispatch_tool(
         if hint:
             inputs.insert(0, UserMsg("memory_hint", hint))
 
-        reply = await worker.reply(inputs)
-        output = reply.get_text_content() or ""
+        if subagent_type == 'search_agent':
+            reply = await worker.reply(inputs, structured_schema=SearchWorkerResult)
+            try:
+                output = SearchWorkerResult.model_validate(reply.structured_output).model_dump_json()
+            except (ValidationError, TypeError):
+                bus.publish(session_id, 'tool.result', {'tool':'task_dispatch', 'agent':subagent_type,
+                    'error':'search_worker_structured_output_missing'})
+                return ToolChunk(content=[TextBlock(text='[error] search_worker_structured_output_missing')],
+                                 state=ToolResultState.ERROR)
+        else:
+            reply = await worker.reply(inputs)
+            output = reply.get_text_content() or ""
         bus.publish(
             session_id,
             "tool.result",

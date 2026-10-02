@@ -7,6 +7,8 @@ const LABELS: Record<string, string> = {
   "plan.update": "任务清单",
   "context.compressed": "上下文压缩",
   "model.fallback": "模型回退",
+  "model.attempt_failed": "请求重试状态",
+  "model.stream_failed": "回复中断",
   "final.result": "最终回复",
   error: "异常",
 };
@@ -37,7 +39,11 @@ function summarize(event: TradeEvent): string {
     case "context.compressed":
       return `摘要 ${p.summary_length} 字，压缩后上下文 ${p.context_messages} 条`;
     case "model.fallback":
-      return `${p.from} 限流，已改用 ${p.to}（${String(p.reason ?? "").slice(0, 40)}）`;
+      return `已从 ${p.from} 切换到 ${p.to}（${String(p.reason ?? "").slice(0, 40)}）`;
+    case "model.attempt_failed":
+      return p.will_retry ? `本次请求未完成，将在 ${p.retry_delay_s} 秒后重试。` : "本次请求未完成，正在处理异常。";
+    case "model.stream_failed":
+      return "回复已中断，请核对当前结果后再继续。";
     case "final.result":
       return String(p.text ?? "").slice(0, 60);
     case "error":
