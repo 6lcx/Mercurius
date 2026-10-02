@@ -1,12 +1,6 @@
 # Mercurius | 跨境购物智能体
 
-当前版本包含上下文压缩、独立长期偏好注入、按需求选择正向偏好、购物状态保存及本轮偏好例外。
-预算更新、商品切换和取消待确认购买通过结构化状态记录；自然语言理解仍由模型完成，不承诺任意表达都能正确处理。
-调用官方 DeepSeek API 时显式关闭思考模式，使结构化摘要请求与工具选择参数兼容。
-验收代码见 `tests/test_context_repair.py` 和 `scripts/benchmark/context_repair.py`。真实 API 验收会产生费用。
-本地密钥、数据库、模型缓存和原始运行产物不提交到仓库；不存在“稳定 80% 缓存命中率”的保证。
-
-基于 AgentScope 2.0 的跨境电商超级搜索框 Agent 系统，DDD 洋葱架构落地：
+基于 AgentScope 2.0 的跨境电商超级搜索框 Agent 系统：
 
 - **MainAgent**（CommerceConcierge）：超级框总调度，**持有全部业务工具可直接单干**；
   内置 Task 计划四件套管理任务清单；满足"可并行 / 上下文隔离 / 链深"任一条件时经 `task_dispatch` 派发子 Agent；
