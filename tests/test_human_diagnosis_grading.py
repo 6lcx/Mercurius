@@ -24,3 +24,12 @@ def test_grading_keeps_incorrect_answers_and_does_not_synthesize_missing_partici
 @pytest.mark.parametrize('changes',[{'elapsed_ms':None},{'elapsed_ms':float('nan')},{'hidden_ms':2000},{'condition':'assisted'}])
 def test_missing_or_inconsistent_records_cannot_be_silently_scored(changes):
     with pytest.raises(ValueError):grade([fixture(**changes)],KEY,'test-only')
+
+
+def test_tutorial_revision_is_not_pooled_with_original_interface():
+    original=fixture()
+    guided=fixture()
+    guided.update(participant='another-synthetic-fixture',interface_version='guided-zh-v2')
+    with pytest.raises(ValueError,match='interface versions'):
+        grade([original,guided],KEY,'test-only')
+    assert grade([guided],KEY,'test-only')['interface_version']=='guided-zh-v2'

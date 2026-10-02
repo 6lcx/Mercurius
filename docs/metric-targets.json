@@ -1,5 +1,5 @@
 {
-  "status": "active_engineering_targets_not_achieved_claims",
+  "status": "closed_for_personal_project_acceptance_with_scoped_results",
   "user_correction": "通过工程优化满足指标；不得用删除指标代替达标工作。允许合理调整口径和提升比例。",
   "primary_targets": [
     {
@@ -58,12 +58,31 @@
       "evidence": "output/metric-targets/parallel-latency-v3/summary.json"
     },
     "diagnosis": {
-      "status": "automated_evidence_extraction_verified_human_MTTR_pending",
+      "status": "automated_verified_small_scale_human_records_received",
       "changes": "Correlated model failure events survive successful retries; diagnostic CLI reports initial failure separately from consequences",
       "automated_evidence_correct": 18,
       "automated_evidence_total": 18,
       "max_cli_seconds": 0.07802679995074868,
-      "evidence": "output/metric-targets/diagnosis-evidence-v1/summary.json"
+      "evidence": "output/metric-targets/diagnosis-evidence-v1/summary.json",
+      "human_summary": {
+        "logs": {
+          "observations": 6,
+          "correct": 5,
+          "median_s_all": 48.711850000023844,
+          "median_s_correct": 53.01460000002384,
+          "correct_under_5min": 5
+        },
+        "assisted": {
+          "observations": 6,
+          "correct": 6,
+          "median_s_all": 22.240099999964237,
+          "median_s_correct": 22.240099999964237,
+          "correct_under_5min": 6
+        }
+      },
+      "human_relative_median_reduction": 0.5434355295486961,
+      "human_scope": "Two submitted records, 6 cases and 12 answers; participant independence and prior exposure unconfirmed. Descriptive results, not causal effect or production MTTR.",
+      "human_evidence": "docs/human-diagnosis-acceptance.json"
     },
     "long_context": {
       "input_token_reduction": 0.33433089317841247,
@@ -100,13 +119,16 @@
       }
     }
   },
-  "remaining_required_evidence": [
-    {
-      "metric": "human diagnosis time",
-      "status": "awaiting actual participants",
-      "ready_material": "output/metric-targets/human-diagnosis-v1/start.html",
-      "protocol": "output/metric-targets/human-diagnosis-v1/protocol.json",
-      "reason": "Automatic evidence extraction cannot establish human elapsed time. No human records have been supplied."
-    }
+  "remaining_required_evidence": [],
+  "closure": {
+    "date": "2026-10-02",
+    "basis": "User accepted small-scale human acceptance and requested closeout; original numerical targets are retained as history, not all reproduced.",
+    "final_material": "docs/Mercurius-final-acceptance.txt"
+  },
+  "unverified_claims_not_required_for_this_closeout": [
+    "Historical 30 minute baseline and production MTTR",
+    "Independent participants and generalizable human speedup",
+    "Natural-traffic completion baseline of 71%",
+    "Universal stable 80% cache, end-to-end speedup, compression cost reduction"
   ]
 }

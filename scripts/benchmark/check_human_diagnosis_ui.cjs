@@ -21,6 +21,7 @@ async function check(group){
   }
   assert.equal(get('done').hidden,false);get('download').onclick();
   const record=JSON.parse(await blob.text());
+  assert.equal(record.interface_version,'guided-zh-v2');
   assert.equal(record.answers.length,6);assert.equal(record.complete,true);
   assert.equal(record.answers[0].condition,group==='A'?'logs':'assisted');
   assert.equal(record.answers.filter(a=>a.condition==='assisted').length,3);

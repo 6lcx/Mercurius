@@ -1,18 +1,44 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mercurius 故障定位盲测</title>
-<style>body{font:16px/1.6 system-ui;max-width:1050px;margin:32px auto;padding:0 20px;color:#172235;background:#f6f8fc}section{background:white;border:1px solid #dce3ee;border-radius:12px;padding:22px;margin:18px 0}button,input,select,textarea{font:inherit;padding:9px;margin:6px 8px 6px 0}button{background:#1e4b97;color:white;border:0;border-radius:6px;cursor:pointer}button:disabled{opacity:.45;cursor:default}pre{white-space:pre-wrap;overflow:auto;max-height:440px;background:#eef2f8;padding:16px;font:13px/1.5 monospace}textarea{width:90%;height:70px}.muted{color:#566278}[hidden]{display:none!important}</style>
-<h1>故障定位盲测</h1><p>判断指定请求最早出现的失败环节和故障类别。允许回答“不确定”。不要求修复，不预设应花多长时间。</p>
-<section id="setup"><label>参与者代号 <input id="participant" required placeholder="请使用代号"></label>
-<label>分组 <select id="group"><option>A</option><option>B</option></select></label>
-<p class="muted">每人仅做一次；另一位参与者选择另一组。同一案例不会让同一人重复作答。A/B组交换日志与诊断视图，以减小案例难度差异。</p>
+<style>body{font:16px/1.6 system-ui;max-width:1050px;margin:32px auto;padding:0 20px;color:#172235;background:#f6f8fc}section{background:white;border:1px solid #dce3ee;border-radius:12px;padding:22px;margin:18px 0}button,input,select,textarea{font:inherit;padding:9px;margin:6px 8px 6px 0}button{background:#1e4b97;color:white;border:0;border-radius:6px;cursor:pointer}button:disabled{opacity:.45;cursor:default}pre{white-space:pre-wrap;overflow:auto;max-height:440px;background:#eef2f8;padding:16px;font:13px/1.5 monospace}textarea{width:90%;height:70px}.muted{color:#566278}[hidden]{display:none!important}.guide{background:#eef5ff;border-left:4px solid #3267b1;padding:14px 18px;border-radius:6px}.steps{display:flex;gap:12px;flex-wrap:wrap}.steps p{flex:1;min-width:180px;background:#eef5ff;padding:14px;border-radius:8px}summary{cursor:pointer;font-weight:600}details{margin:16px 0}code{background:#edf0f5;padding:2px 5px}label{display:inline-block}#setupError,#answerError{color:#a32323}h1{margin-bottom:4px}h2{font-size:22px}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:8px;border-bottom:1px solid #dce3ee}</style>
+<h1>找出这次请求哪里出了问题</h1>
+<p class="muted">这是一个故障定位小测试，共 6 题。不用改代码，只需看材料，选出“哪里失败”和“发生了什么”。</p>
+<section id="intro"><h2>先弄懂怎么玩 · 这里不计时</h2>
+<div class="steps"><p><strong>① 找到题目给的编号</strong><br>编号代表一次用户请求。材料中可能混有其他请求，只看这一条。</p><p><strong>② 找第一次失败</strong><br>后面的重试、切换模型、熔断，可能只是处理失败的后续动作。</p><p><strong>③ 选两项并提交</strong><br>选择失败环节和故障类型；看不出来就选“不确定”，不用猜。</p></div>
+<p>我们想比较：<strong>直接看日志</strong>与<strong>看系统整理的诊断信息</strong>，哪种更容易找到问题。两种材料会交替出现。</p>
+<details><summary>看一个虚构示例（不计时，不是正式题）</summary>
+<p>题目：请定位请求 <code>DEMO-001</code>。下面每一行是一件按时间发生的事。</p>
+<pre>10:00:01　DEMO-002　查商品成功（这是别人的请求，不看它）
+10:00:02　DEMO-001　调用 AI 服务，返回 HTTP 429：请求过多
+10:00:03　DEMO-001　系统等待后重试
+10:00:04　DEMO-001　重试成功</pre>
+<details><summary>展开示例讲解</summary><p>失败环节选<strong>“AI 模型调用”</strong>；故障类型选<strong>“限流”</strong>。依据是 10:00:02 的 HTTP 429。后面虽然重试成功，但题目问的是最早发生的失败。</p><p>如果只看到“已切换备用模型”，却没有说明为什么失败，就不要据此猜原因，可以选“不确定”。</p></details></details>
+<p class="guide">准备好后再进入正式题。每题只有点击“显示材料并开始计时”才开始计时；阅读本页和题间休息不计时。开始后请不要刷新页面，切到其他窗口的时间仍会记录。</p></section>
+<section id="setup"><h2>准备参加</h2><label>参与者代号 <input id="participant" required placeholder="例如 tester01，不用真实姓名"></label>
+<label>材料顺序 <select id="group"><option value="A">A 组（默认）</option><option value="B">B 组</option></select></label>
+<p class="muted">第一次参加选 A 即可；若组织者安排你参加 B 组，再选 B。两组题目相同、展示材料不同，每人只参加一次。</p>
 <label><input type="checkbox" id="attest">我本人参加计时，没有预先查看这套案例的答案；不会使用其他诊断工具或AI辅助。</label><br>
-<button id="begin">准备开始</button><p id="setupError" role="alert"></p></section>
-<section id="task" hidden><h2 id="title"></h2><p id="request"></p><button id="start">开始本例并显示材料</button>
-<div id="work" hidden><p id="condition"></p><pre id="evidence"></pre>
-<label>最早失败环节 <select id="component"><option value="">请选择</option><option value="model">模型调用</option><option value="tool">业务工具调用</option><option value="unknown">不确定</option></select></label>
-<label>故障类别 <select id="category"><option value="">请选择</option><option value="rate_limit">限流</option><option value="timeout">超时</option><option value="connection_failure">连接中断</option><option value="upstream_unavailable">上游服务不可用</option><option value="unknown">不确定</option></select></label>
-<p><label>判断依据（可选）<br><textarea id="reason"></textarea></label></p>
-<button id="submit">提交本例</button><p id="answerError" role="alert"></p></div></section>
+<button id="begin">进入正式题（还不计时）</button><p id="setupError" role="alert"></p></section>
+<section id="task" hidden><h2 id="title"></h2><p id="request"></p><button id="start">显示材料并开始计时</button>
+<div id="work" hidden><p class="guide" id="condition"></p>
+<details><summary>看不懂字段或选项？展开中文速查</summary>
+<table><tr><th>材料里的文字</th><th>是什么意思</th></tr>
+<tr><td>request_id</td><td>请求编号，用来区分不同用户请求。</td></tr>
+<tr><td>occurred_at / at</td><td>事件发生的时间。</td></tr>
+<tr><td>type / event / payload</td><td>发生了什么，以及这件事的详细信息。</td></tr>
+<tr><td>first_failure / classification</td><td>系统找到的第一处失败 / 系统判断的故障类别。</td></tr>
+<tr><td>model / tool</td><td>向 AI 服务请求回答 / 调用查商品等业务功能。</td></tr>
+<tr><td>rate_limit / 429</td><td>限流：短时间请求太多，被服务拒绝。</td></tr>
+<tr><td>timeout</td><td>超时：等待超过了允许的时间。</td></tr>
+<tr><td>connection_failure</td><td>连接失败或中断：请求没连上，或传输途中断开。</td></tr>
+<tr><td>upstream_unavailable / 503</td><td>上游服务不可用：被调用的服务暂时无法处理请求。</td></tr>
+<tr><td>retry / fallback / circuit</td><td>重试 / 切换备用方案 / 熔断（暂时停止调用）。这些动作本身不一定是最早的失败原因。</td></tr>
+</table><p>速查只解释词义，不保证材料一定能得出结论；没有足够证据时选“不确定”。</p></details>
+<h3>阅读材料</h3><p class="muted">下方保留原始字段和顺序。先找题目指定的请求编号，再找它最早的失败记录。</p><pre id="evidence" tabindex="0" aria-label="本题诊断材料"></pre><h3>作答：只需要选下面两项</h3>
+<label>① 哪里最先失败？ <select id="component"><option value="">请选择</option><option value="model">AI 模型调用（向 AI 服务请求回答）</option><option value="tool">业务工具调用（查商品等功能）</option><option value="unknown">不确定</option></select></label>
+<label>② 发生了什么？ <select id="category"><option value="">请选择</option><option value="rate_limit">限流：请求太多，被拒绝</option><option value="timeout">超时：等得太久</option><option value="connection_failure">连接失败或中断</option><option value="upstream_unavailable">上游服务暂时不可用</option><option value="unknown">不确定</option></select></label>
+<p><label>依据是哪一行或哪个字段？（可不填）<br><textarea id="reason" placeholder="可以复制一段错误信息；不需要写专业分析。"></textarea></label></p>
+<button id="submit">提交并结束本题计时</button><p id="answerError" role="alert"></p></div></section>
 <section id="done" hidden><h2>已完成</h2><p>请下载记录并交给评测组织者核对。页面不展示答案，避免影响其他参与者。浏览器后台时间会单独记录；不会静默扣除。</p><button id="download">下载计时记录</button></section>
 <script id="data" type="application/json">__DATA__</script>
 <script>
@@ -20,22 +46,24 @@ const data=JSON.parse(document.getElementById('data').textContent);
 const el=id=>document.getElementById(id);
 let index=0,started=0,wallStart='',hiddenStart=0,hiddenMs=0,participant='',group='',running=false;
 const answers=[];
+const interfaceVersion='guided-zh-v2';
+let recordInterfaceVersion=interfaceVersion;
 const storageKey='mercurius-diagnosis-'+data.protocol_hash;
 let prior;
 try{prior=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{prior={}}
-function save(){localStorage.setItem(storageKey,JSON.stringify({...prior,[participant]:{group,answers,index,unfinished_case:running?data.cases[index].case_id:null}}));}
-function ready(){el('work').hidden=true;el('start').hidden=false;el('title').textContent=`案例 ${index+1} / ${data.cases.length}`;el('request').textContent='材料将在开始计时后显示。';}
+function save(){localStorage.setItem(storageKey,JSON.stringify({...prior,[participant]:{group,answers,index,interface_version:recordInterfaceVersion,unfinished_case:running?data.cases[index].case_id:null}}));}
+function ready(){el('work').hidden=true;el('start').hidden=false;el('title').textContent=`案例 ${index+1} / ${data.cases.length}`;el('request').textContent='这题还没开始计时。准备好后点击下面的按钮，看完材料再选择两个答案。';}
 el('begin').onclick=()=>{participant=el('participant').value.trim();group=el('group').value;
  if(!participant||!el('attest').checked){el('setupError').textContent='请填写代号并确认参与声明。';return}
  if(prior[participant]){const saved=prior[participant];if(!saved.answers){el('setupError').textContent='该代号已打开过本套案例，不能重复参加。';return}
-  group=saved.group;answers.push(...saved.answers);index=saved.index;el('setup').hidden=true;el('done').hidden=false;
+  recordInterfaceVersion=saved.interface_version||'original-v1';group=saved.group;answers.push(...saved.answers);index=saved.index;el('intro').hidden=true;el('setup').hidden=true;el('done').hidden=false;
   el('done').querySelector('p').textContent='已恢复先前提交的记录，可下载。未完成案例不补写耗时，也不重复展示；请交给组织者注明中断。';return}
  try{save()}catch{el('setupError').textContent='无法保存重复参加标记，请在允许本地存储的浏览器中打开。';return}
- el('setup').hidden=true;el('task').hidden=false;ready();};
+ el('intro').hidden=true;el('setup').hidden=true;el('task').hidden=false;ready();};
 el('start').onclick=()=>{const c=data.cases[index];const mode=((index+(group==='B'?1:0))%2===0)?'logs':'assisted';
  started=performance.now();wallStart=new Date().toISOString();hiddenMs=0;hiddenStart=0;running=true;
  save();
- el('request').textContent='请定位请求：'+c.request_id;el('condition').textContent=mode==='logs'?'材料：原始事件日志（包含其他请求）':'材料：按请求关联的诊断视图';
+ el('request').textContent='本题只看这个请求编号：'+c.request_id;el('condition').textContent=mode==='logs'?'正在计时 · 这题看原始日志。里面混有其他请求，请按上方编号找到相关记录。':'正在计时 · 这题看系统整理的诊断信息。系统已按请求编号归集材料，请检查第一处失败及其证据。';
  el('evidence').textContent=mode==='logs'?data.logs:JSON.stringify(c.assisted,null,2);
  el('component').value='';el('category').value='';el('reason').value='';el('answerError').textContent='';
  el('start').hidden=true;el('work').hidden=false;};
@@ -46,7 +74,7 @@ el('submit').onclick=()=>{if(!running)return;if(!el('component').value||!el('cat
  started_at:wallStart,finished_at:new Date().toISOString(),elapsed_ms:stop-started,hidden_ms:hiddenMs,
  component:el('component').value,category:el('category').value,reason:el('reason').value.trim()});
  index++;save();if(index<data.cases.length){ready()}else{el('task').hidden=true;el('done').hidden=false}};
-el('download').onclick=()=>{const saved=JSON.parse(localStorage.getItem(storageKey)||'{}')[participant];const value={protocol_hash:data.protocol_hash,participant,group,attestation:true,complete:answers.length===data.cases.length,unfinished_case:saved?.unfinished_case??null,planned_cases:data.cases.length,clock:'browser performance.now, includes background time',answers};
+el('download').onclick=()=>{const saved=JSON.parse(localStorage.getItem(storageKey)||'{}')[participant];const value={interface_version:recordInterfaceVersion,protocol_hash:data.protocol_hash,participant,group,attestation:true,complete:answers.length===data.cases.length,unfinished_case:saved?.unfinished_case??null,planned_cases:data.cases.length,clock:'browser performance.now, includes background time',answers};
  const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='mercurius-human-diagnosis-'+group+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 window.addEventListener('beforeunload',event=>{if(running||answers.length>0&&index<data.cases.length){event.preventDefault();event.returnValue='';}});
 </script></html>

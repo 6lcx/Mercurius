@@ -160,8 +160,9 @@ class ToolResilienceMiddleware(ToolMiddlewareBase):
             raise
         except asyncio.TimeoutError:
             await _record_failure(self._registry, tool_name)
-            detail = f"{tool_name} 执行超过 {timeout:.0f} 秒已中断"
-            logger.warning("工具超时：%s（%.0fs）", tool_name, timeout)
+            duration = f"{timeout * 1000:g} 毫秒" if timeout < 1 else f"{timeout:g} 秒"
+            detail = f"{tool_name} 执行超过 {duration}已中断"
+            logger.warning("工具超时：%s（%s）", tool_name, duration)
             self._publish_circuit(tool_name, await _status(self._registry, tool_name), detail)
             yield ToolChunk(
                 content=[TextBlock(type="text", text=f"[error] {detail}")],

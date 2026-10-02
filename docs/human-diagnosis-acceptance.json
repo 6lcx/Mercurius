@@ -1,0 +1,130 @@
+{
+  "interface_version": "guided-zh-v2",
+  "protocol_hash": "e493b349145055aecab1df9c228b091af94d3702a7ffca7fbe05bc824c6a7f71",
+  "submitted_records": 2,
+  "case_count": 6,
+  "answer_count": 12,
+  "summary": {
+    "logs": {
+      "observations": 6,
+      "correct": 5,
+      "median_s_all": 48.711850000023844,
+      "median_s_correct": 53.01460000002384,
+      "correct_under_5min": 5
+    },
+    "assisted": {
+      "observations": 6,
+      "correct": 6,
+      "median_s_all": 22.240099999964237,
+      "median_s_correct": 22.240099999964237,
+      "correct_under_5min": 6
+    }
+  },
+  "scope": "Two submitted records, 6 cases and 12 answers; participant independence and prior exposure unconfirmed. Descriptive results, not causal effect or production MTTR.",
+  "relative_median_reduction": 0.5434355295486961,
+  "reason_review": {
+    "424/D05": "Selected labels match key, but cited fallback is downstream of the earliest failure; evidence identification not fully demonstrated."
+  },
+  "raw_record_sha256": [
+    "a28e1bf32dc0f907923dc505ce0315ce9446d18f02b411625a2043c5e6643b19",
+    "e76ea31e14f3811852e6c999a935a9c0c4260515d9534da5c8892416c2e43ebb"
+  ],
+  "rows": [
+    {
+      "group": "B",
+      "case_id": "D01",
+      "condition": "assisted",
+      "correct": true,
+      "elapsed_s": 38.10539999997616,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "B",
+      "case_id": "D02",
+      "condition": "logs",
+      "correct": false,
+      "elapsed_s": 44.40910000002384,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "B",
+      "case_id": "D03",
+      "condition": "assisted",
+      "correct": true,
+      "elapsed_s": 20.222799999952315,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "B",
+      "case_id": "D04",
+      "condition": "logs",
+      "correct": true,
+      "elapsed_s": 53.01460000002384,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "B",
+      "case_id": "D05",
+      "condition": "assisted",
+      "correct": true,
+      "elapsed_s": 30.194200000047683,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "B",
+      "case_id": "D06",
+      "condition": "logs",
+      "correct": true,
+      "elapsed_s": 76.25119999992847,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "A",
+      "case_id": "D01",
+      "condition": "logs",
+      "correct": true,
+      "elapsed_s": 128.48189999997615,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "A",
+      "case_id": "D02",
+      "condition": "assisted",
+      "correct": true,
+      "elapsed_s": 23.78860000002384,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "A",
+      "case_id": "D03",
+      "condition": "logs",
+      "correct": true,
+      "elapsed_s": 38.60089999997616,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "A",
+      "case_id": "D04",
+      "condition": "assisted",
+      "correct": true,
+      "elapsed_s": 20.691599999904632,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "A",
+      "case_id": "D05",
+      "condition": "logs",
+      "correct": true,
+      "elapsed_s": 25.430900000095367,
+      "hidden_s": 0.0
+    },
+    {
+      "group": "A",
+      "case_id": "D06",
+      "condition": "assisted",
+      "correct": true,
+      "elapsed_s": 19.4755,
+      "hidden_s": 0.0
+    }
+  ]
+}

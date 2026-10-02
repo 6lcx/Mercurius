@@ -8,6 +8,9 @@ from .common import digest, write_json
 
 
 def grade(records,key,protocol_hash):
+    versions={r.get('interface_version','original-v1') for r in records}
+    if len(versions)>1:
+        raise ValueError('Different interface versions must be graded separately')
     seen_participants=set()
     rows=[]
     groups=set()
@@ -48,7 +51,7 @@ def grade(records,key,protocol_hash):
             median_s_all=statistics.median(r['elapsed_s'] for r in subset) if subset else None,
             median_s_correct=statistics.median(r['elapsed_s'] for r in correct) if correct else None,
             correct_under_5min=sum(r['elapsed_s']<=300 for r in correct))
-    return dict(participants=len(seen_participants),both_groups_present=groups=={'A','B'},
+    return dict(interface_version=next(iter(versions),None),participants=len(seen_participants),both_groups_present=groups=={'A','B'},
         all_cases_observed_per_participant=len(rows)==len(key)*len(seen_participants),
         summary=summary,rows=rows,incomplete_records=incomplete,
         scope='Exploratory controlled human evidence-location study. Not historical production MTTR; timing is participant-browser recorded.')
