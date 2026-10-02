@@ -105,7 +105,8 @@ async def agent_suite(rec, capture, tracer, args):
     write_json(rec.output / 'agent-cases.json', cases)
     for repeat, case, variant in pairs(cases, args.repeats, ('protection_off', 'protection_on')):
         key = f'agent-{case["id"]}-{repeat}-{variant}'
-        token = TRIAL.set(dict(suite='agent', case_id=case['id'], variant=variant, repeat=repeat))
+        token = TRIAL.set(dict(suite='agent', case_id=case['id'], variant=variant, repeat=repeat,
+                              stratum=getattr(args, 'stratum', 'normal')))
         turns, error, censored = [], None, False
         started = None
         async with container(rec, key, variant, args.consent_product_search) as c:

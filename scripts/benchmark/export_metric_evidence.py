@@ -5,7 +5,7 @@ from .common import digest, write_json
 
 
 def main():
-    names=['cache-projection-v1','task-resilience-v1','preference-recall-v1',
+    names=['cache-projection-v1','task-resilience-v1','task-resilience-v2','preference-recall-v1',
         'context-long-v1','context-long-v2','context-long-v3','diagnosis-evidence-v1',
         'parallel-latency-v1','parallel-latency-v2','parallel-latency-v3',
         'cross-language-v1','cross-language-agent-v1','cross-language-agent-v2']

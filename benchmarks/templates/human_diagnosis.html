@@ -1,0 +1,52 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mercurius 故障定位盲测</title>
+<style>body{font:16px/1.6 system-ui;max-width:1050px;margin:32px auto;padding:0 20px;color:#172235;background:#f6f8fc}section{background:white;border:1px solid #dce3ee;border-radius:12px;padding:22px;margin:18px 0}button,input,select,textarea{font:inherit;padding:9px;margin:6px 8px 6px 0}button{background:#1e4b97;color:white;border:0;border-radius:6px;cursor:pointer}button:disabled{opacity:.45;cursor:default}pre{white-space:pre-wrap;overflow:auto;max-height:440px;background:#eef2f8;padding:16px;font:13px/1.5 monospace}textarea{width:90%;height:70px}.muted{color:#566278}[hidden]{display:none!important}</style>
+<h1>故障定位盲测</h1><p>判断指定请求最早出现的失败环节和故障类别。允许回答“不确定”。不要求修复，不预设应花多长时间。</p>
+<section id="setup"><label>参与者代号 <input id="participant" required placeholder="请使用代号"></label>
+<label>分组 <select id="group"><option>A</option><option>B</option></select></label>
+<p class="muted">每人仅做一次；另一位参与者选择另一组。同一案例不会让同一人重复作答。A/B组交换日志与诊断视图，以减小案例难度差异。</p>
+<label><input type="checkbox" id="attest">我本人参加计时，没有预先查看这套案例的答案；不会使用其他诊断工具或AI辅助。</label><br>
+<button id="begin">准备开始</button><p id="setupError" role="alert"></p></section>
+<section id="task" hidden><h2 id="title"></h2><p id="request"></p><button id="start">开始本例并显示材料</button>
+<div id="work" hidden><p id="condition"></p><pre id="evidence"></pre>
+<label>最早失败环节 <select id="component"><option value="">请选择</option><option value="model">模型调用</option><option value="tool">业务工具调用</option><option value="unknown">不确定</option></select></label>
+<label>故障类别 <select id="category"><option value="">请选择</option><option value="rate_limit">限流</option><option value="timeout">超时</option><option value="connection_failure">连接中断</option><option value="upstream_unavailable">上游服务不可用</option><option value="unknown">不确定</option></select></label>
+<p><label>判断依据（可选）<br><textarea id="reason"></textarea></label></p>
+<button id="submit">提交本例</button><p id="answerError" role="alert"></p></div></section>
+<section id="done" hidden><h2>已完成</h2><p>请下载记录并交给评测组织者核对。页面不展示答案，避免影响其他参与者。浏览器后台时间会单独记录；不会静默扣除。</p><button id="download">下载计时记录</button></section>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const data=JSON.parse(document.getElementById('data').textContent);
+const el=id=>document.getElementById(id);
+let index=0,started=0,wallStart='',hiddenStart=0,hiddenMs=0,participant='',group='',running=false;
+const answers=[];
+const storageKey='mercurius-diagnosis-'+data.protocol_hash;
+let prior;
+try{prior=JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{prior={}}
+function save(){localStorage.setItem(storageKey,JSON.stringify({...prior,[participant]:{group,answers,index,unfinished_case:running?data.cases[index].case_id:null}}));}
+function ready(){el('work').hidden=true;el('start').hidden=false;el('title').textContent=`案例 ${index+1} / ${data.cases.length}`;el('request').textContent='材料将在开始计时后显示。';}
+el('begin').onclick=()=>{participant=el('participant').value.trim();group=el('group').value;
+ if(!participant||!el('attest').checked){el('setupError').textContent='请填写代号并确认参与声明。';return}
+ if(prior[participant]){const saved=prior[participant];if(!saved.answers){el('setupError').textContent='该代号已打开过本套案例，不能重复参加。';return}
+  group=saved.group;answers.push(...saved.answers);index=saved.index;el('setup').hidden=true;el('done').hidden=false;
+  el('done').querySelector('p').textContent='已恢复先前提交的记录，可下载。未完成案例不补写耗时，也不重复展示；请交给组织者注明中断。';return}
+ try{save()}catch{el('setupError').textContent='无法保存重复参加标记，请在允许本地存储的浏览器中打开。';return}
+ el('setup').hidden=true;el('task').hidden=false;ready();};
+el('start').onclick=()=>{const c=data.cases[index];const mode=((index+(group==='B'?1:0))%2===0)?'logs':'assisted';
+ started=performance.now();wallStart=new Date().toISOString();hiddenMs=0;hiddenStart=0;running=true;
+ save();
+ el('request').textContent='请定位请求：'+c.request_id;el('condition').textContent=mode==='logs'?'材料：原始事件日志（包含其他请求）':'材料：按请求关联的诊断视图';
+ el('evidence').textContent=mode==='logs'?data.logs:JSON.stringify(c.assisted,null,2);
+ el('component').value='';el('category').value='';el('reason').value='';el('answerError').textContent='';
+ el('start').hidden=true;el('work').hidden=false;};
+document.addEventListener('visibilitychange',()=>{if(!running)return;if(document.hidden){hiddenStart=performance.now()}else if(hiddenStart){hiddenMs+=performance.now()-hiddenStart;hiddenStart=0}});
+el('submit').onclick=()=>{if(!running)return;if(!el('component').value||!el('category').value){el('answerError').textContent='请选择两个判断；无法确认时选择“不确定”。';return}
+ const stop=performance.now();if(hiddenStart)hiddenMs+=stop-hiddenStart;running=false;
+ answers.push({case_id:data.cases[index].case_id,request_id:data.cases[index].request_id,condition:((index+(group==='B'?1:0))%2===0)?'logs':'assisted',
+ started_at:wallStart,finished_at:new Date().toISOString(),elapsed_ms:stop-started,hidden_ms:hiddenMs,
+ component:el('component').value,category:el('category').value,reason:el('reason').value.trim()});
+ index++;save();if(index<data.cases.length){ready()}else{el('task').hidden=true;el('done').hidden=false}};
+el('download').onclick=()=>{const saved=JSON.parse(localStorage.getItem(storageKey)||'{}')[participant];const value={protocol_hash:data.protocol_hash,participant,group,attestation:true,complete:answers.length===data.cases.length,unfinished_case:saved?.unfinished_case??null,planned_cases:data.cases.length,clock:'browser performance.now, includes background time',answers};
+ const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='mercurius-human-diagnosis-'+group+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+window.addEventListener('beforeunload',event=>{if(running||answers.length>0&&index<data.cases.length){event.preventDefault();event.returnValue='';}});
+</script></html>

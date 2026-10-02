@@ -526,6 +526,464 @@
         "raw_kept_local": true
       }
     },
+    "task-resilience-v2": {
+      "protocol.json": {
+        "path": "output/metric-targets/task-resilience-v2/protocol.json",
+        "sha256": "498e8a0c15008dcaebe325e0853638dfcfb1778bd65d2ce56fee0f7280ee93f7",
+        "data": {
+          "cases": [
+            {
+              "id": "search-budget",
+              "description": "预算硬约束检索",
+              "queries": [
+                "帮我找一款寄到中国、到手价300元以内、抗造耐摔的露营灯。"
+              ],
+              "rubric": {
+                "p0": [
+                  "回复中的价格、库存数字必须与商品库一致（露营灯 LumenGo 89 元），不得编造"
+                ],
+                "p1": [
+                  "推荐了 LumenGo 便携露营灯（P1008）",
+                  "推荐商品价格不超过 300 元预算"
+                ],
+                "p2": [
+                  "给出了推荐理由（防水/抗摔/续航等）"
+                ]
+              }
+            },
+            {
+              "id": "landed-price-us",
+              "description": "跨境到手价（运费+关税）",
+              "queries": [
+                "我人在美国，想买个降噪耳机寄到美国，预算 250 美元，到手总共多少钱（含运费关税）？"
+              ],
+              "rubric": {
+                "p0": [
+                  "到手价必须等于 小计+运费+关税 且与工具返回一致（AeroHush 219 美元 + 运费约 9.15 美元 + 关税 0）",
+                  "不得凭空承诺物流时效"
+                ],
+                "p1": [
+                  "推荐了 AeroHush 耳机且给出了到手价明细（运费、关税分项）",
+                  "指出了美国免税额度内关税为 0"
+                ],
+                "p2": [
+                  "回复用美元口径，清晰列出价格分项"
+                ]
+              }
+            },
+            {
+              "id": "compare-two",
+              "description": "两商品比价",
+              "queries": [
+                "AeroHush 耳机和 VoltTrek 充电器，都寄到美国的话哪个到手价划算？分别多少钱？"
+              ],
+              "rubric": {
+                "p0": [
+                  "两个商品的价格数字必须与商品库事实表及系统汇率表自洽（小计=原价按汇率折算，误差≤1%），不得出现无法由事实表推导的价格"
+                ],
+                "p1": [
+                  "两个商品都给出了到手价并做了对比"
+                ],
+                "p2": [
+                  "对比结论明确（哪个更便宜）"
+                ]
+              }
+            },
+            {
+              "id": "order-confirm-card",
+              "description": "下单前必须出确认卡",
+              "queries": [
+                "帮我买 1 个 LumenGo 露营灯军绿色，寄到：张三，中国 浙江 杭州市 西湖区某路1号，邮编310000，电话13800000000。"
+              ],
+              "rubric": {
+                "p0": [
+                  "在买家未明确确认前不得直接创建订单（回复中不应出现订单号 GBX-）"
+                ],
+                "p1": [
+                  "输出了确认卡：商品、数量、金额、收货地址",
+                  "询问买家是否确认"
+                ],
+                "p2": [
+                  "确认卡信息完整清晰"
+                ]
+              }
+            },
+            {
+              "id": "order-full-cycle",
+              "description": "确认下单 → 查单 → 取消闭环",
+              "queries": [
+                "帮我买 1 个 LumenGo 露营灯军绿色，寄到：张三，中国 浙江 杭州市 西湖区某路1号，邮编310000，电话13800000000。",
+                "我确认下单。",
+                "我确认取消刚才已创建的订单，请立即执行取消并核对订单状态。"
+              ],
+              "rubric": {
+                "p0": [
+                  "订单金额 89 元必须来自工具返回",
+                  "不得承诺退款路径等不存在的能力"
+                ],
+                "p1": [
+                  "第二轮成功创建订单并给出订单号（GBX- 前缀）",
+                  "第三轮成功取消订单且状态为已取消"
+                ],
+                "p2": [
+                  "每轮回复简洁且信息完整"
+                ]
+              }
+            },
+            {
+              "id": "memory-write",
+              "description": "长期偏好写入",
+              "buyer_id": "eval-memory-buyer",
+              "queries": [
+                "记住：我以后买东西都不要塑料材质的，我对塑料过敏。"
+              ],
+              "rubric": {
+                "p0": [
+                  "不得虚构已有订单或商品信息"
+                ],
+                "p1": [
+                  "调用了记忆能力并明确告知买家已记住该偏好"
+                ],
+                "p2": [
+                  "回复自然，确认了记忆内容"
+                ]
+              }
+            },
+            {
+              "id": "memory-recall",
+              "description": "长期偏好跨会话生效（依赖 memory-write 先执行）",
+              "buyer_id": "eval-memory-buyer",
+              "prior_context": "该买家（eval-memory-buyer）已在早先的另一个会话里通过记忆能力写入长期偏好：\n“以后买东西都不要塑料材质，对塑料过敏”。系统会把该偏好自动注入本轮上下文，\n因此 Agent 在本轮提及或应用“不要塑料”属于正确使用历史偏好，不是无据添加。\n",
+              "queries": [
+                "帮我推荐旅行三件套；如果材质没有核实，请明确告诉我不能确认，不要猜。"
+              ],
+              "rubric": {
+                "p0": [
+                  "推荐商品的价格库存与商品库一致"
+                ],
+                "p1": [
+                  "推荐时主动提及/应用了'不要塑料材质'的历史偏好",
+                  "推荐了非塑料材质的 Nomadica 旅行三件套"
+                ],
+                "p2": [
+                  "明确向买家说明该推荐符合其材质偏好"
+                ]
+              },
+              "preference_fixture": "不要塑料材质"
+            },
+            {
+              "id": "no-fabrication",
+              "description": "商品库无货时不得编造",
+              "queries": [
+                "帮我找一台 4K 无人机，预算 5000 元。"
+              ],
+              "rubric": {
+                "p0": [
+                  "商品库中没有无人机，不得编造商品、价格或库存"
+                ],
+                "p1": [
+                  "如实告知没有找到相关商品"
+                ],
+                "p2": [
+                  "给出了合理的替代建议或引导（可选）"
+                ]
+              }
+            },
+            {
+              "id": "order-not-found",
+              "description": "查询不存在的订单",
+              "queries": [
+                "帮我查一下订单 GBX-999999 的状态。"
+              ],
+              "rubric": {
+                "p0": [
+                  "不得编造订单信息"
+                ],
+                "p1": [
+                  "如实告知订单不存在"
+                ],
+                "p2": [
+                  "回复礼貌且建议核对订单号"
+                ]
+              }
+            },
+            {
+              "id": "chitchat-boundary",
+              "description": "闲聊不应触发工具",
+              "queries": [
+                "你好呀，你是谁？"
+              ],
+              "rubric": {
+                "p0": [
+                  "不得编造商品或订单信息"
+                ],
+                "p1": [
+                  "自我介绍为购物助手并说明能力范围"
+                ],
+                "p2": [
+                  "回复简短友好"
+                ]
+              }
+            },
+            {
+              "id": "category-insight",
+              "description": "品类选购常识（RAG 知识库）",
+              "queries": [
+                "我第一次买旅行装备，材质和自重该怎么看？多少钱算合理？先别给我推商品。"
+              ],
+              "rubric": {
+                "p0": [
+                  "不得编造商品或价格（本轮买家明确说不要推商品）"
+                ],
+                "p1": [
+                  "回答了材质判断口径（如帆布/尼龙/非塑料类）与自重参考",
+                  "给出了价格区间参考（入门/主力/高端任一档位）"
+                ],
+                "p2": [
+                  "提到了至少一个避坑点或选购建议"
+                ]
+              }
+            },
+            {
+              "id": "long-context-memory",
+              "description": "多轮对话后关键事实不丢（上下文工程）",
+              "queries": [
+                "帮我找一款寄到中国、300元以内、抗造耐摔的露营灯。",
+                "露营灯的防水等级和续航具体是多少？",
+                "再帮我看看有没有适合高原的登山杖。",
+                "速干毛巾呢？有三条装的吗？",
+                "回到最开始那款露营灯：它叫什么名字、多少钱？一句话回答。"
+              ],
+              "rubric": {
+                "p0": [
+                  "最后一轮准确回答了第一轮推荐的露营灯名称与价格，与商品库一致（LumenGo 89 元）"
+                ],
+                "p1": [
+                  "中间各轮均基于商品库真实商品作答，未出现库外商品",
+                  "若某轮因价格等硬约束没有候选，如实说明“库里有但超出约束”或放宽约束后重搜，不得断言库里没有该品类商品"
+                ],
+                "p2": [
+                  "最后一轮回答简洁（接近一句话）"
+                ]
+              }
+            },
+            {
+              "id": "tool-error-honesty",
+              "description": "工具不可用时如实告知不编造",
+              "queries": [
+                "帮我查一下跨境直邮到巴西的到手价，商品选 LumenGo 露营灯。"
+              ],
+              "rubric": {
+                "p0": [
+                  "工具不支持巴西（非支持目的国）时，不得自行编造运费、关税或到手价数字"
+                ],
+                "p1": [
+                  "如实告知该目的国目前不支持或无法计算，并说明可行的下一步"
+                ],
+                "p2": [
+                  "商品本身信息（名称、原价）如果提到则与商品库一致"
+                ]
+              }
+            }
+          ],
+          "strata": [
+            "normal",
+            "transient_once",
+            "pre_stream_once"
+          ],
+          "target_completion_rate": 0.89,
+          "paired_arms": [
+            "protection_off",
+            "protection_on"
+          ],
+          "baseline": "same production business code, disable project retries/fallback/harness as in live.container",
+          "fault_schedule": "Exactly one failure on first upstream invocation per case/arm; same schedule for both arms",
+          "fault_scope": "synthetic external-boundary faults, followed by real DeepSeek responses and real local tools/SQLite",
+          "aggregate_scope": "Equal-weight experimental matrix, not natural user traffic or a claim of historical 71%",
+          "order_contract": "Explicit confirmation of cancellation; no relaxation of cancellation or inventory assertions",
+          "api_calls_cap": 260,
+          "estimated_peak_cost_cap_cny": 2
+        }
+      },
+      "summary.json": {
+        "path": "output/metric-targets/task-resilience-v2/summary.json",
+        "sha256": "a2d7fc63e2fa3559884f23259ad7b271e07c952861cd0f9f565a36ad61ad606d",
+        "data": {
+          "normal": {
+            "protection_off": {
+              "passed": 13,
+              "total": 13
+            },
+            "protection_on": {
+              "passed": 13,
+              "total": 13
+            }
+          },
+          "transient_once": {
+            "protection_off": {
+              "passed": 0,
+              "total": 13
+            },
+            "protection_on": {
+              "passed": 13,
+              "total": 13
+            }
+          },
+          "pre_stream_once": {
+            "protection_off": {
+              "passed": 0,
+              "total": 13
+            },
+            "protection_on": {
+              "passed": 13,
+              "total": 13
+            }
+          }
+        }
+      },
+      "spending.json": {
+        "path": "output/metric-targets/task-resilience-v2/spending.json",
+        "sha256": "3bafab7331545ea39831f61fb34069a18d3eef1d33c4fa3d4d1d45ca49ac636e",
+        "data": {
+          "estimated_peak_cny_including_prior": 0.6626244,
+          "prior_cny": 0,
+          "limit_cny": 2,
+          "not_actual_bill": true,
+          "missing_usage_reserved": true,
+          "pricing_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+        }
+      },
+      "source-hashes.json": {
+        "path": "output/metric-targets/task-resilience-v2/source-hashes.json",
+        "sha256": "4c2eceb812df8c9358a888420a513e1833141b4605c298c75b8529711321d0b2",
+        "data": {
+          "app\\composition.py": "c5b6f9eb2492f9d37dbd238ae4da67af7e9a0432bbce25a7d53d9c05fa3881f5",
+          "app\\worker.py": "6c510c484b882dad13138e619eef69b70fd9403e1b6f3e982ed3fb83f5d119ba",
+          "app\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\application\\diagnostics.py": "ab62b6a9dab45df6c3d22ef810154bf3d7aac91891a50a7505f6beb50bef6227",
+          "app\\application\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\infrastructure\\budget.py": "ad2942c418326482a69dcf43b6b1f0f2e002df1fbeaea0c02c3659af4508528c",
+          "app\\infrastructure\\context.py": "60ba0d31a08b37bb9385330a28dee2ecbc38349e3cb3307b40a71813e24b3699",
+          "app\\infrastructure\\eventbus.py": "036c31be20f4cdbfeb99948676633582a2220ba3e968813d114fc6c867acfb30",
+          "app\\infrastructure\\harness_middleware.py": "640f8b47d48d2d8bc18c9abd58a007e4c371d3bf2aad4aae8ce24caf794b9c6b",
+          "app\\infrastructure\\llm.py": "4b10e6f62ec449f9abc0a0406acc8ca866768a2ea083a80fd511583c9dda7d5d",
+          "app\\infrastructure\\resilience.py": "144df70a0305d7b0896c483833f1a6bfad89b768de6b4727a530e846b53442bc",
+          "app\\infrastructure\\settings.py": "d56a4688b2f7e921d1bc77bac145592b0145877ef8409192d78d977b20375f8e",
+          "app\\infrastructure\\shared_breaker.py": "3edac8846faedd0083b685200fda2cb451a87983e03453352343b510c422027f",
+          "app\\infrastructure\\throttle.py": "aaeea5d09a36371bce1a0981a654ce1050d26ed6155c3e78709f9d576763dcf6",
+          "app\\infrastructure\\tracing.py": "6edebdd35813362736b8f927f3f914903821c69d8d5a3ece0790fc01334889c8",
+          "app\\infrastructure\\transient.py": "c306e17bc9af4b00ad9594efc64340823aaf65635eab10a4823968a497918d50",
+          "app\\infrastructure\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\presentation\\connection.py": "e86423bf3dc02b9d4295606afab549cc3189448e732d66f533038860713ca556",
+          "app\\presentation\\dto.py": "c9ca19a5133f1a5488faa538bc4be7654c6379fac8859eed5eb011212b1886f1",
+          "app\\presentation\\server.py": "e12b22e248f13a623425de1acd80ed24f173febd5d2d9063810c67bff8328620",
+          "app\\presentation\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\application\\agents\\context_policy.py": "a1319f1825c8abeafc5c26a9d6732a55dc26aa3fd453d3ac569724987efa7103",
+          "app\\application\\agents\\critical_facts.py": "df8b6a218a61c494108404fb68458c18a3d14e6be0341bbfa93b974b80538e89",
+          "app\\application\\agents\\main_agent.py": "81b5ae023b4b285729185f6806e7ca462b4046646ec327160e9d78e8142abfe0",
+          "app\\application\\agents\\orchestrator.py": "44479cee3420d0942b054d95041e1e7132f4ba8c100d82bdbee51a5308e983f7",
+          "app\\application\\agents\\permissions.py": "6049d748dc2b691df77dd02e60d42e00cc77d271a6a3f7739674e4d7bd765ea4",
+          "app\\application\\agents\\search_agent.py": "2133b8858a0a3808348d08525ccc79a1028050216756135c70afbb64cf39412f",
+          "app\\application\\agents\\trade_agent.py": "0b0c98f9838668c01e2f2ef7ac6e9fffd2a553596673b523f5a3ceecab6c954d",
+          "app\\application\\agents\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\application\\harness\\assertions.py": "5eae9811069ef899f44d136b401e67bf579b7550371e8a3e50721ca2a9bf31f6",
+          "app\\application\\harness\\drift_detector.py": "d471678a1a717027cac7f8f2511c2dfee32e305d4eefb3886ebaccae7ccf8a40",
+          "app\\application\\harness\\loop_detector.py": "d0e6af6e7c43758bb72fd21449ac6d65493431c9ebd7160dd8640ac0af674b63",
+          "app\\application\\harness\\__init__.py": "3335d1a654f804cf5c49471bfd8848f690e6f96673920ee598e5256cb678f29f",
+          "app\\application\\memory\\preference_selector.py": "e815fc5bd8b23a795e9e6196e0458f36ba6569bc0797ee30f521163e485073aa",
+          "app\\application\\memory\\__init__.py": "522e2c6fef9be7eca418f03528d2c02138900187d169d09fd262953113a3d3ba",
+          "app\\application\\prompts\\loader.py": "53cab9d23541728ff17e7e8f0071730404f4472ae1bf0fc51914cdf879a980cf",
+          "app\\application\\prompts\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\application\\tools\\category_insight_tool.py": "ac6e6df6b96483ab1ca4c03a9201005a1e18d35522eb2cca477820f2efed6e9c",
+          "app\\application\\tools\\forget_preference_tool.py": "61a7e7b48bf4bbe6ab3c9e30ac3d55288523d0c379c9cf33a526d3c80a335cc5",
+          "app\\application\\tools\\order_tools.py": "58eff1fb5417c2d0a8f124746154c9b6603cec1bfa13a591d07429eabc30334c",
+          "app\\application\\tools\\product_search_tool.py": "e26c8a890a8120b582ed8db5480524797c0f1a6cd5030bdaf7cf735cbe99944f",
+          "app\\application\\tools\\remember_preference_tool.py": "2d2862bd3f49b3ea2458cbf680f10228251f09031e6e6a05f522727362f7fe73",
+          "app\\application\\tools\\shopping_context_tool.py": "1f6ace4243754a283eeb7cdb4b58f094f5ab8d1f8747cf243cb0df4c6d3c287a",
+          "app\\application\\tools\\task_dispatch_tool.py": "0ee77303bde1795a2e3af8e92956cddda427f48d7cdb6c7ecee8a49783442a34",
+          "app\\application\\tools\\web_search_tool.py": "6742e0182bbbfd91b9e08ccfe0b86bddb33a514cf9bf7bae0cf2dcc7a6065ec8",
+          "app\\application\\tools\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\application\\usecases\\catalog_search.py": "f357216d21bdf33b59191333f8b525cc7ce365c02667008f951c53ab27e381aa",
+          "app\\application\\usecases\\order_usecases.py": "3d92f38026015ba96bcb4d4cac4e78874fd8b7eec67cc5c71098e45221d98a18",
+          "app\\application\\usecases\\product_recommendation.py": "1ed2f97a0b1a22fb950e6b1ca4244ade66ae0f00e0b0b593c4565b7ff972bd8d",
+          "app\\application\\usecases\\web_knowledge.py": "e7c2c9e4c089b2ea1477d1b9f2e664b2305e6518bcf2eaa6a0295cbfcfaef70c",
+          "app\\application\\usecases\\web_product_policy.py": "507ff1ddc6bc647debc846257a4e0616ea03a3544a65da2f9c69aba4b34784d7",
+          "app\\application\\usecases\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\buyer\\preference.py": "3fa3277c7824b57eda63e302b55897366a94a317660c4d0a4990a9477e376d40",
+          "app\\domain\\buyer\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\catalog\\exchange_rate.py": "cacc09ade154d88f5f7112d51f5b94ec306fd8360b8fea53d4dc3025f5409147",
+          "app\\domain\\catalog\\money.py": "54efad36795333cc9352ec40a64aff18f1cc172a82293e1423195bab78109d78",
+          "app\\domain\\catalog\\product.py": "96abe10c67c401fbbabdbc7db856de15497c5b9d72045c05f0a035dc67c08cde",
+          "app\\domain\\catalog\\product_search_spec.py": "0e66c16bd2cf294941da232935a115dfc079957b2bbc00167e4eb4b5c113da64",
+          "app\\domain\\catalog\\sku.py": "ed9471bdb9e05afa4ad261214767e3e0440fc2796bd96ce719df1ef052825c5a",
+          "app\\domain\\catalog\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\order\\address.py": "031f0c8594ac183f33ba5da9678b061faf11f42de58c40da97d3710cef6faee9",
+          "app\\domain\\order\\order.py": "0b51596fc3b9d137b89021e765accd0472b3e283cfd6522c0deb93be19157c5c",
+          "app\\domain\\order\\order_line.py": "0d497d5ee76794fcf078b4186747fb3e1a094ec85e8a354222fc21149b9c7f5e",
+          "app\\domain\\order\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\queue\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\session\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\shipping\\tariff_schedule.py": "0bccab0d719a079eb830a31e631f5d551e44fd607d19723c2ce8d789cd8dd039",
+          "app\\domain\\shipping\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\buyer\\ports\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\catalog\\ports\\product_repository.py": "111fd4ec9f7fc3d4b221ccbe0bdcfc8e41108897d00bd20f8d408866d3c1c43c",
+          "app\\domain\\catalog\\ports\\retrieval_ports.py": "2f6a5f4a657461ae3c9c34e1d61689dcc1adae5a7f64834608c3183b08065013",
+          "app\\domain\\catalog\\ports\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\order\\ports\\order_repository.py": "a8ad6fe73dae999b894d1518f809a552ac9aa9517f700010ba6fbd39b9e52793",
+          "app\\domain\\order\\ports\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\queue\\ports\\task_queue.py": "326bf0d63cb628e8416052f938d4aa662aa86d68adb5657a87d6b8923c3520ed",
+          "app\\domain\\queue\\ports\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\domain\\session\\ports\\conversation_store.py": "01c7dfdf738161bb1e61d638cdafe1e450f82087609df21c5d7de377286b283a",
+          "app\\domain\\session\\ports\\session_store.py": "b8e7bc97f7e901371f772f67816d66f7288ea7279b6aebd3508b82ca4ee8b701",
+          "app\\domain\\session\\ports\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\infrastructure\\cache\\cached_embedding_client.py": "a968d4d89f7da550caf7bb3b12d7d5a23fbedb6555b3aac0d3997d25da3507fc",
+          "app\\infrastructure\\cache\\redis_cache.py": "4fd295205421e726d98f287638cd8f3243307ff1065357ed596def0c3d9433a0",
+          "app\\infrastructure\\cache\\semantic_cache.py": "e130fdec4922c2bc7598f2f1eb1c77115098438da9f2bd46c383305128115207",
+          "app\\infrastructure\\cache\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\infrastructure\\catalog\\external_discovery.py": "146ee6ac41070611d808ac76c9feaf5664f19a82593b3449df859d365c29bf8b",
+          "app\\infrastructure\\embedding\\factory.py": "ab93e521346721453e0510c22fea07f3d4cf2aed8fd6022b57e0ce9dfb4baaec",
+          "app\\infrastructure\\embedding\\local_embedding.py": "078bcf812e096dc23061acf033034b1b1f040233ef247a4e9eff01f7adfd4557",
+          "app\\infrastructure\\embedding\\openai_embedding_client.py": "58bf960c5b13968ed3c83a3008b8a611e74a331cd219e9a89354dcd7439fa87a",
+          "app\\infrastructure\\embedding\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\infrastructure\\persistence\\in_memory_repositories.py": "4d36075c0a9bb75a0f1616ed377bc5d1577d2be09a72d96beaad362ed4fedf01",
+          "app\\infrastructure\\persistence\\json_file_stores.py": "39a4da3060a1447d7b8d10ef552aae2b6c87e6f7bd270beec97a1e5c18fdd1ad",
+          "app\\infrastructure\\persistence\\persistent_product_repository.py": "ea4220ae290928d2be8fbaa5bf5400b55daf6ae1f8b6ee77fce79f22f0afa4ce",
+          "app\\infrastructure\\persistence\\seed_products.py": "0547c76f69d4039fa75b6e946f18545c91e1da698d08be70ce4d2ee01e4f3496",
+          "app\\infrastructure\\persistence\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\infrastructure\\queue\\redis_stream_queue.py": "562ade4eb5e2ca93522c8d2fa0a67717c49c211665c0b0d0197f17d6ae170e7d",
+          "app\\infrastructure\\queue\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\infrastructure\\rag\\category_knowledge.py": "68d8e703e26def176f6777a2189c9bdd027f4394f154554bceab5965cab193ce",
+          "app\\infrastructure\\rag\\web_source.py": "01ae3acb89617c37e1fd1ed0b34ec78016f953e981f068aa33b2e47dc6976e4e",
+          "app\\infrastructure\\rag\\web_vector_store.py": "03777bc6026138474d6db25ca53667efe9ada8343126eb2ddb23f1866b18abc0",
+          "app\\infrastructure\\rag\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\infrastructure\\rerank\\http_reranker.py": "1671fbd75f73dd8c0cb7c037a3a47cec3d06862edff0ed3ac1959a86b1948b4a",
+          "app\\infrastructure\\rerank\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\infrastructure\\security\\content_filter.py": "373565fd7a7f37422e3d330c0647457ad03c5d9cd37e4a4d7412d709aaa28f53",
+          "app\\infrastructure\\security\\output_guard.py": "0f46a53c6a9740b75fa7d97c7e988f5e8e85f071eca51cd0f26f44230f9c9053",
+          "app\\infrastructure\\security\\__init__.py": "916cca36c5608ea89a62c3ca413081a5262880cbe42d663d0a017c191e5c2472",
+          "app\\infrastructure\\vector\\index_bootstrap.py": "8ec26909b98b07679dd9220b50d04b2c07210ffd07cd3bc3218d245df66cee18",
+          "app\\infrastructure\\vector\\qdrant_product_index.py": "857c74b922d57f6317981e84b00395a694e8fea1400c7be71d05cfa0746b3591",
+          "app\\infrastructure\\vector\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\infrastructure\\persistence\\sql\\repositories.py": "6ae1e0a07534ebf71826cf3c0b09e32b28766ced951970c59c3fb1362a768a24",
+          "app\\infrastructure\\persistence\\sql\\tables.py": "973473373bf3fdaaea23262fca93da90718bb5e9ef8f587e00199ba971952020",
+          "app\\infrastructure\\persistence\\sql\\__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
+          "app\\application\\prompts\\globex.yml": "f5a821eced96efb9c478e7dffc2ec9fcb00301b632b9a22b9eacb04143e389dc",
+          "C:\\Users\\20685\\Desktop\\globex-agent-main\\scripts\\benchmark\\task_resilience_trial.py": "9ff7ca7a37966c31d5b720292310fd7e5780a8a31d76a88a1b0a0dfbfa2c2928",
+          "scripts\\benchmark\\cases.py": "dc987ac249b1bf2cfaaa817a97c8430cc22ee79d2b7b45c8c7b0c35dd3319384"
+        }
+      },
+      "model_calls.jsonl": {
+        "path": "output/metric-targets/task-resilience-v2/model_calls.jsonl",
+        "sha256": "0e035fea1aa8449c728d721e17b01feefb74216911d82a0b6c696782efb70b7a",
+        "raw_kept_local": true
+      },
+      "injections.jsonl": {
+        "path": "output/metric-targets/task-resilience-v2/injections.jsonl",
+        "sha256": "b321ea012535b513a898573ef46d0bd8d73f06834cf3f1bd1000892e92cd7be8",
+        "raw_kept_local": true
+      }
+    },
     "preference-recall-v1": {
       "protocol.json": {
         "path": "output/metric-targets/preference-recall-v1/protocol.json",

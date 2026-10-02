@@ -13,9 +13,9 @@ from .observation import ApiCapture, install_tracing
 from benchmarks.runners.context_resume import SpendingGuard
 
 
-async def main():
+async def main(version='v1'):
     from app.infrastructure.llm import ThrottledChatModel
-    root = Path('output/metric-targets/task-resilience-v1')
+    root = Path('output/metric-targets') / f'task-resilience-{version}'
     if root.exists():
         raise ValueError('Use a new experiment version, not overwritten observations')
     rec = Recorder(root)
@@ -33,12 +33,14 @@ async def main():
         'order_contract': 'Explicit confirmation of cancellation; no relaxation of cancellation or inventory assertions',
         'api_calls_cap': 260, 'estimated_peak_cost_cap_cny': 2,
     })
-    write_json(root/'source-hashes.json', {str(p):digest(p) for p in Path('app').rglob('*.py')})
+    write_json(root/'source-hashes.json', {str(p):digest(p) for p in [*Path('app').rglob('*.py'),
+        *Path('app/application/prompts').glob('*.yml'), Path(__file__), Path('scripts/benchmark/cases.py')]})
     tracer = install_tracing(rec)
     original = ThrottledChatModel._invoke_upstream
     args = SimpleNamespace(limit_cases=0, repeats=1, consent_product_search=False, task_timeout=180)
     with ApiCapture(rec, 260) as capture, SpendingGuard(capture, rec, limit=2), patch('scripts.benchmark.cases.agent_cases', lambda: deepcopy(cases)):
         for stratum in strata:
+            args.stratum = stratum
             child = Recorder(root/stratum)
             seen = set()
             async def invoke(model, *a, **kw):
@@ -66,4 +68,7 @@ async def main():
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    import argparse
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--version',default='v1',choices=['v1','v2'])
+    asyncio.run(main(parser.parse_args().version))

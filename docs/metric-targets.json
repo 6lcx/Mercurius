@@ -42,8 +42,8 @@
     "completion": {
       "passed": 39,
       "total": 39,
-      "scope": "13 business cases x normal/429/prestream controlled strata, not natural traffic",
-      "evidence": "output/metric-targets/task-resilience-v1/summary.json"
+      "scope": "Current structured-output workers and shopping summary; 13 business cases x normal/429/prestream controlled strata, not natural traffic",
+      "evidence": "output/metric-targets/task-resilience-v2/summary.json"
     },
     "preference": {
       "recall_at_5": 1.0,
@@ -83,6 +83,30 @@
       "format_failures_after": 0,
       "scope": "Same 12 synthetic English development queries; query rewriting plus structured worker output, not embedding-only or BM25",
       "evidence": "output/metric-targets/cross-language-agent-v2/summary.json"
+    },
+    "retrieval": {
+      "recall_at_8": {
+        "rules": 0.5895522388059702,
+        "rules_embedding": 0.7599502487562189
+      },
+      "relative_improvement": 0.2890295358649788,
+      "scope": "67 existing development queries, rules vs rules+BGE, retrieval/model/dataset sources verified unchanged; not BM25 or Top100",
+      "evidence": "output/resume-verification-v2/local/aggregate.json",
+      "unchanged_sources": {
+        "app/application/usecases/product_recommendation.py": true,
+        "app/infrastructure/embedding/local_embedding.py": true,
+        "app/infrastructure/persistence/seed_products.py": true,
+        "eval/product_recall.jsonl": true
+      }
     }
-  }
+  },
+  "remaining_required_evidence": [
+    {
+      "metric": "human diagnosis time",
+      "status": "awaiting actual participants",
+      "ready_material": "output/metric-targets/human-diagnosis-v1/start.html",
+      "protocol": "output/metric-targets/human-diagnosis-v1/protocol.json",
+      "reason": "Automatic evidence extraction cannot establish human elapsed time. No human records have been supplied."
+    }
+  ]
 }
